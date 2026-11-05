@@ -4,7 +4,7 @@ Last updated: 5 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phase 1 is built but not deployed. Phase 2 is 7 of 12 tickets done: the analysis engine works, but it
+Phase 1 is built but not deployed. Phase 2 is 8 of 12 tickets done: the analysis engine works, but it
 isn't connected to the app yet.
 
 ## Done
@@ -15,7 +15,7 @@ isn't connected to the app yet.
 - Public repository import, with clear errors for bad links, missing repos and private repos
 - Supabase schema with Row Level Security
 
-**Phase 2: Analysis engine (tickets 01-07)**
+**Phase 2: Analysis engine (tickets 01-08)**
 
 - 01 Rate limiting on import: 20 per hour per visitor, stored as a hash
 - 02 `packages/engine`, wired into the web app
@@ -24,19 +24,21 @@ isn't connected to the app yet.
 - 05 Import resolution: relative paths, aliases, `extends`, monorepos, `#imports`, workspace packages
 - 06 Graph, cycles and metrics
 - 07 Accuracy check against TypeScript's own resolver, recorded in `docs/adr/0004`
+- 08 Safe archive download and extraction: `downloadArchive` (web) only follows GitHub's redirect to
+  codeload.github.com and caps bytes; `extractTarGz` (engine) works in memory, drops unsafe paths and
+  links, and caps unpacked size and entry count. Not yet measured on Vercel or a real repo.
 
-Last results: 114 engine tests and 55 web tests pass, and the production build passes. On
+Last results: 124 engine tests and 61 web tests pass, and the production build passes. On
 microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 ## Next
 
 Remaining Phase 2 tickets, in order:
 
-1. 08 Download and extract archives safely
-2. 09 Add the results schema
-3. 10 Run analyses in the background
-4. 11 Show real progress and stats
-5. 12 Add the daily maintenance cron
+1. 09 Add the results schema
+2. 10 Run analyses in the background
+3. 11 Show real progress and stats
+4. 12 Add the daily maintenance cron
 
 Then Phase 3: the interactive graph. The full plan and build order are in `docs/spec.md`.
 
@@ -63,5 +65,9 @@ Then Phase 3: the interactive graph. The full plan and build order are in `docs/
   so it exists only on this PC. Back it up if the drive matters.
 - The repo is on an exFAT drive with no symlinks. See `docs/adr/0002`.
 - Keep `typescript` on `^6`. See `docs/adr/0003`.
-- `npm run setup` installs both `apps/web` and `packages/engine`.
+- `npm run setup` installs both `apps/web` and `packages/engine`. If npm fails with `EALLOWSCRIPTS`,
+  the cause is an `allow-scripts` line in the user-level `~/.npmrc`; set `NPM_CONFIG_USERCONFIG` to an
+  empty file for that command. On a fresh checkout, run `npx next typegen` in `apps/web` before
+  `typecheck`.
+- `.scratch/` was missing on this checkout, so the tickets for 08-12 were not available.
 - A stopped `next start` can keep running and hold its port. Check the port before trusting a test.
