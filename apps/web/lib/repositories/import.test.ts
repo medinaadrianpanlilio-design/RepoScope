@@ -16,6 +16,7 @@ const metadata: RepositoryMetadata = {
 
 function deps(overrides: Partial<ImportDeps> = {}): ImportDeps {
   return {
+    allow: vi.fn(async () => true),
     lookup: vi.fn(async () => ({ ok: true as const, repository: metadata })),
     upsert: vi.fn(async () => "repo-id"),
     save: vi.fn(async () => undefined),
@@ -56,6 +57,15 @@ describe("importRepository", () => {
     const result = await importRepository({ url: "https://evil.example/a/b", userId: null }, d);
 
     expect(result).toMatchObject({ ok: false, code: "invalid_url", status: 400 });
+    expect(d.lookup).not.toHaveBeenCalled();
+    expect(d.allow).not.toHaveBeenCalled();
+  });
+
+  it("stops before calling GitHub when the visitor is over the limit", async () => {
+    const d = deps({ allow: vi.fn(async () => false) });
+    const result = await importRepository({ url, userId: null }, d);
+
+    expect(result).toMatchObject({ ok: false, code: "too_many_requests", status: 429 });
     expect(d.lookup).not.toHaveBeenCalled();
   });
 

@@ -43,4 +43,7 @@ Run typecheck, lint and tests before calling work done.
 - **Never execute imported code,** and treat repository content as untrusted data.
 - **Keep secrets server-side.** Never expose the Supabase secret key or GitHub tokens to the browser
   or to logs. `.env.example` holds placeholder names only.
+- **This repo is public.** Never commit credentials, keys, tokens or private details, and scan staged
+  changes before every commit.
+- **Commits credit only the repo owner.** No AI attribution lines in commits or PRs.
 - **Keep layers apart.** UI, API, database and analysis logic stay separate.

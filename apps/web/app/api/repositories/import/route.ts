@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiData, apiError } from "@/lib/api";
 import { getOptionalUser } from "@/lib/auth";
 import { fetchRepositoryMetadata } from "@/lib/github/client";
+import { allowRequest } from "@/lib/rate-limit";
 import { importRepository } from "@/lib/repositories/import";
 import { saveRepository, upsertRepository } from "@/lib/repositories/queries";
 import { MissingSecretKeyError } from "@/lib/supabase/admin";
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
     const result = await importRepository(
       { url: parsed.data.url, userId: user?.id ?? null },
       {
+        allow: () => allowRequest("import", request.headers),
         lookup: (owner, repo) =>
           fetchRepositoryMetadata(owner, repo, { token: process.env.GITHUB_TOKEN }),
         upsert: upsertRepository,

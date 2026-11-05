@@ -6,8 +6,8 @@ RepoScope builds a knowledge base of a repository from static analysis. People e
 interactive architecture graph, and coding agents read the same knowledge through MCP. Analysis
 decides the facts; AI only explains them.
 
-> **Status: Phase 1 of 9.** Accounts, the dashboard and public repository import work. The analysis
-> engine and graph are next. See [the spec](docs/spec.md) for the full plan.
+> **Status: early development.** Accounts, the dashboard and public repository import are built, and the
+> analysis engine works on its own. See [status](docs/status.md) and [the spec](docs/spec.md).
 
 ## Run it
 
@@ -42,9 +42,10 @@ Signed-in tests also need `E2E_EMAIL` and `E2E_PASSWORD` for a confirmed test ac
 
 ## Deploy
 
-Import the repository into Vercel, set **Root Directory** to `apps/web`, and add the variables from
-`.env.example`. In Supabase, under Authentication > URL Configuration, set the Site URL to the
-deployed address and add `<address>/auth/callback` to the redirect URLs.
+Import the repository into Vercel, set **Root Directory** to `apps/web`, keep **Include files outside
+the root directory** on, and add the variables from `.env.example`. In Supabase, under Authentication >
+URL Configuration, set the Site URL to the deployed address and add `<address>/auth/callback` to the
+redirect URLs.
 
 ## Stack
 

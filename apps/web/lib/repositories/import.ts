@@ -2,6 +2,7 @@ import type { RepositoryLookup, RepositoryMetadata } from "@/lib/github/client";
 import { parseGitHubRepoUrl } from "@/lib/github/repo-url";
 
 export type ImportDeps = {
+  allow: () => Promise<boolean>;
   lookup: (owner: string, repo: string) => Promise<RepositoryLookup>;
   upsert: (repository: RepositoryMetadata) => Promise<string>;
   save: (userId: string, repositoryId: string) => Promise<void>;
@@ -11,7 +12,7 @@ export type ImportResult =
   | { ok: true; repositoryId: string }
   | {
       ok: false;
-      code: "invalid_url" | "not_found" | "rate_limited" | "github_unavailable";
+      code: "invalid_url" | "not_found" | "too_many_requests" | "rate_limited" | "github_unavailable";
       message: string;
       status: 400 | 404 | 429 | 502;
     };
@@ -23,6 +24,15 @@ export async function importRepository(
   const parsed = parseGitHubRepoUrl(url);
   if (!parsed.ok) {
     return { ok: false, code: "invalid_url", message: parsed.reason, status: 400 };
+  }
+
+  if (!(await deps.allow())) {
+    return {
+      ok: false,
+      code: "too_many_requests",
+      message: "Too many imports. Try again in an hour.",
+      status: 429,
+    };
   }
 
   const lookup = await deps.lookup(parsed.owner, parsed.repo);

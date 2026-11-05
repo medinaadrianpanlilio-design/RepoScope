@@ -1,13 +1,15 @@
 {
   "name": "reposcope",
   "private": true,
-  "engines": { "node": ">=20.9" },
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
-    "setup": "npm install --prefix apps/web",
+    "setup": "npm install --prefix apps/web && npm install --prefix packages/engine",
     "dev": "npm run dev --prefix apps/web",
     "build": "npm run build --prefix apps/web",
-    "typecheck": "npm run typecheck --prefix apps/web",
+    "typecheck": "npm run typecheck --prefix packages/engine && npm run typecheck --prefix apps/web",
     "lint": "npm run lint --prefix apps/web",
-    "test": "npm run test --prefix apps/web"
+    "test": "npm run test --prefix packages/engine && npm run test --prefix apps/web"
   }
 }
