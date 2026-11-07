@@ -52,7 +52,9 @@ export function FolderNode({ data }: NodeProps<Node<FolderNodeData>>) {
       {handles}
       <Folder size={14} className="shrink-0 text-accent" aria-hidden />
       <span className="min-w-0 flex-1 truncate font-mono">{name}</span>
-      <span className="shrink-0 text-[10px] text-muted">{fileCount} files</span>
+      <span className="shrink-0 text-[10px] text-muted">
+        {fileCount} {fileCount === 1 ? "file" : "files"}
+      </span>
       <ChevronRight size={12} className="shrink-0 text-muted" aria-hidden />
     </div>
   );

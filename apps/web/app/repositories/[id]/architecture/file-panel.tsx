@@ -2,11 +2,16 @@
 
 import { ExternalLink, FolderTree, X } from "lucide-react";
 import Link from "next/link";
+import { ResizeHandle } from "@/components/resize-handle";
 import { githubFileUrl } from "@/lib/graph/details";
 import type { GraphFile, GraphPayload } from "@/lib/graph/types";
 import { DependencyInspector, SourceView, useFileSource } from "../file-views";
 
+export const PANEL_LIMITS = { min: 320, max: 760 };
+
 type Props = {
+  width: number;
+  onWidthChange: (width: number) => void;
   repositoryId: string;
   analysisId: string;
   data: GraphPayload;
@@ -20,6 +25,8 @@ type Props = {
 };
 
 export function FilePanel({
+  width,
+  onWidthChange,
   repositoryId,
   analysisId,
   data,
@@ -35,8 +42,16 @@ export function FilePanel({
   return (
     <aside
       aria-label={`Details for ${file.path}`}
-      className="absolute inset-x-0 bottom-0 z-10 flex h-[55%] flex-col border-t border-line bg-sidebar sm:inset-y-0 sm:right-0 sm:left-auto sm:h-auto sm:w-[420px] sm:border-t-0 sm:border-l"
+      className="absolute inset-x-0 bottom-0 z-10 flex h-[55%] flex-col border-t border-line bg-sidebar sm:inset-y-0 sm:right-0 sm:left-auto sm:h-auto sm:w-[var(--panel-width)] sm:border-t-0 sm:border-l"
     >
+      <ResizeHandle
+        label="Resize file details"
+        side="right"
+        width={width}
+        onChange={onWidthChange}
+        className="hidden sm:block"
+        {...PANEL_LIMITS}
+      />
       <header className="flex items-start gap-2 border-b border-line p-3">
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-mono text-sm font-semibold">{nameOf(file.path)}</h2>

@@ -12,16 +12,27 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
+import { useStoredWidth } from "@/components/resize-handle";
 import {
   RELATIONSHIP_TYPES,
   type GraphData,
   type GraphPayload,
+  type GraphView,
   type RelationshipType,
   type ViewNode,
 } from "@/lib/graph/types";
 import { connectedTo, defaultExpanded, foldersOf, toGraphView } from "@/lib/graph/view";
-import { FilePanel } from "./file-panel";
+import { isTypingTarget, nextIndex } from "@/lib/ui/layout";
+import { FilePanel, PANEL_LIMITS } from "./file-panel";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
 
 type Positions = Record<string, { x: number; y: number }>;
@@ -91,6 +102,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
       ]),
   );
   const [positions, setPositions] = useState<Positions | null>(null);
+  const [laidOutView, setLaidOutView] = useState<GraphView | null>(null);
   const [layoutFailed, setLayoutFailed] = useState(false);
   const [selected, setSelected] = useState<string | null>(
     initialFile ? `file:${initialFile.id}` : null,
@@ -100,6 +112,9 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   const [hiddenLanguages, setHiddenLanguages] = useState<Set<string>>(new Set());
   const [directory, setDirectory] = useState("");
   const [query, setQuery] = useState("");
+  const [activeMatch, setActiveMatch] = useState(0);
+  const [panelWidth, setPanelWidth] = useStoredWidth("reposcope:panel", 420, PANEL_LIMITS);
+  const searchInput = useRef<HTMLInputElement>(null);
   const [layoutRun, setLayoutRun] = useState(0);
   const [legendOpen, setLegendOpen] = useState(() => window.innerWidth >= 640);
   const [dragged, setDragged] = useState<Positions>({});
@@ -130,11 +145,15 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
 
     current.onmessage = ({ data: message }) => {
       if (message.requestId !== requestId.current) return;
-      if (message.error) setLayoutFailed(true);
+      if (message.error) {
+        setLayoutFailed(true);
+        setLaidOutView(view);
+      }
       else {
         setLayoutFailed(false);
         setDragged({});
         setPositions(message.positions);
+        setLaidOutView(view);
       }
     };
     current.postMessage({
@@ -180,6 +199,20 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     return () => window.removeEventListener("resize", onResize);
   }, [fitTo]);
 
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return;
+      if (event.key === "/") {
+        event.preventDefault();
+        searchInput.current?.focus();
+      } else if (event.key === "Escape") {
+        setSelected(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const related = useMemo(
     () => (selected ? connectedTo(selected, view.edges) : null),
     [selected, view.edges],
@@ -215,6 +248,10 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           type: node.kind,
           position,
           data: node,
+          ariaLabel:
+            node.kind === "file"
+              ? `File ${node.path}`
+              : `Folder ${node.path}, ${node.fileCount} files`,
           className: state,
           hidden: !isVisible(node),
           width: NODE_WIDTH,
@@ -289,6 +326,15 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     }
   }
 
+  function onCanvasKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const element = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node");
+    const node = nodes.find((candidate) => candidate.id === element?.dataset.id);
+    if (!node) return;
+    event.preventDefault();
+    onNodeClick(event, node);
+  }
+
   function closeAll() {
     setSelected(null);
     setExpanded(defaultExpanded(data.files));
@@ -300,8 +346,11 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     : undefined;
 
   return (
-    <div className="relative min-h-[520px] flex-1">
-      <div className="absolute inset-0">
+    <div
+      className="relative min-h-[520px] flex-1"
+      style={{ "--panel-width": `${panelWidth}px` } as CSSProperties}
+    >
+      <div className="absolute inset-0" onKeyDown={onCanvasKeyDown}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -322,7 +371,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         <Controls
           showInteractive={false}
           position="bottom-right"
-          className={selected ? "sm:!mr-[432px]" : undefined}
+          className={selected ? "sm:!mr-[calc(var(--panel-width)+12px)]" : undefined}
         />
       </ReactFlow>
       </div>
@@ -333,29 +382,59 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           <label>
             <span className="sr-only">Search files</span>
             <input
+              ref={searchInput}
               type="search"
+              role="combobox"
+              aria-expanded={query.trim() !== ""}
+              aria-controls="graph-search-results"
+              aria-autocomplete="list"
+              aria-activedescendant={matches[activeMatch] ? `graph-match-${activeMatch}` : undefined}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActiveMatch(0);
+              }}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && matches[0]) revealFile(matches[0]);
-                if (event.key === "Escape") setQuery("");
+                const match = matches[activeMatch];
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  const delta = event.key === "ArrowDown" ? 1 : -1;
+                  setActiveMatch(nextIndex(activeMatch, delta, matches.length));
+                } else if (event.key === "Enter" && match) {
+                  revealFile(match);
+                } else if (event.key === "Escape") {
+                  setQuery("");
+                }
               }}
               placeholder={`Search ${data.files.length.toLocaleString("en-US")} files`}
               className="field pl-8"
             />
           </label>
           {query.trim() && (
-            <ul className="mt-1 max-h-72 overflow-auto rounded-md border border-line bg-card text-sm shadow-lg">
-              {matches.length === 0 && <li className="px-3 py-2 text-muted">No matching files</li>}
-              {matches.map((file) => (
-                <li key={file.id}>
-                  <button
-                    type="button"
-                    onClick={() => revealFile(file)}
-                    className="block w-full truncate px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
-                  >
-                    {file.path}
-                  </button>
+            <ul
+              id="graph-search-results"
+              role="listbox"
+              aria-label="Matching files"
+              className="mt-1 max-h-72 overflow-auto rounded-md border border-line bg-card text-sm shadow-lg"
+            >
+              {matches.length === 0 && (
+                <li role="presentation" className="px-3 py-2 text-muted">
+                  No matching files
+                </li>
+              )}
+              {matches.map((file, index) => (
+                <li
+                  key={file.id}
+                  id={`graph-match-${index}`}
+                  role="option"
+                  aria-selected={index === activeMatch}
+                  onClick={() => revealFile(file)}
+                  onMouseEnter={() => setActiveMatch(index)}
+                  className={`block w-full cursor-pointer truncate px-3 py-1.5 text-left font-mono text-xs ${
+                    index === activeMatch ? "bg-elevated" : ""
+                  }`}
+                >
+                  {file.path}
                 </li>
               ))}
             </ul>
@@ -456,6 +535,8 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
 
       {selectedFile && (
         <FilePanel
+          width={panelWidth}
+          onWidthChange={setPanelWidth}
           repositoryId={source.repositoryId}
           analysisId={source.analysisId}
           data={data}
@@ -469,8 +550,11 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         />
       )}
 
-      {!positions && !layoutFailed && (
-        <p role="status" className="absolute inset-0 flex items-center justify-center text-sm text-muted">
+      {laidOutView !== view && (
+        <p
+          role="status"
+          className="pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-md border border-line bg-card px-3 py-2 text-sm text-muted"
+        >
           Arranging {view.nodes.length.toLocaleString("en-US")} nodes…
         </p>
       )}

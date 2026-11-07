@@ -4,9 +4,9 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phases 1 and 2 are done and live at https://repo-scope-delta.vercel.app: paste a repo link and watch
-it get analyzed, with real stats on its overview page. Phase 3 is nearly done: the interactive graph,
-file panel, explorer and dependency inspector work.
+Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
+link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
+inspector. Next is Phase 4, Local AI.
 
 ## Done
 
@@ -38,14 +38,14 @@ file panel, explorer and dependency inspector work.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 125 engine tests and 182 web tests pass, and the production build passes. On
-microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+Last results: 125 engine tests, 195 web tests and 15 browser tests pass, and the production build
+passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
-**Phase 3: Visualization (tickets 01-09)**
+**Phase 3: Visualization (all 10 tickets)**
 
 - 01-04 Graph data API, React Flow and ELK canvas, node and edge styles, search, highlighting and
   filters
-- 05 Folder grouping above 200 files. Smoothness near the 2,000-file limit isn't measured yet.
+- 05 Folder grouping above 200 files, measured near the 2,000-file limit in `docs/adr/0004`.
 - 06 Source on demand at `GET /api/analysis/[id]/files/[fileId]`, highlighted with Shiki. Nothing is
   stored.
 - 07 File panel: details, cycle warning, clickable imports and importers, and the source.
@@ -53,23 +53,21 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
   to and from the graph. Non-code files are listed and open on GitHub.
 - 09 Dependency inspector, shared by the graph panel and explorer: direct and indirect reach, depth,
   cycle warnings and unresolved imports.
+- 10 Resizable and collapsible panels, keyboard use across the graph and explorer, and browser tests
+  in `apps/web/e2e/repository.spec.ts`.
 
 ## Next
 
-Phase 3 tickets, in order:
-
-1. 10 Check responsive and keyboard use
-2. 05 Measure smoothness near the 2,000-file limit
+Phase 4: Local AI. Start at `.scratch/phase-4-local-ai/spec.md`. Its first ticket needs the owner: download
+Qwen3.5-4B Instruct. The test of the browser reaching localhost comes next, and decides the approach.
 
 The full plan and build order are in `docs/spec.md`.
 
 ## Needs the owner
 
-1. Set `CRON_SECRET` in Vercel to a long random value, or the daily job refuses to run.
-2. Point Supabase's Site URL and redirect URL at the live site, then test a real sign-up and its
-   confirmation email.
-3. Add a `GITHUB_TOKEN` limited to public repositories, read-only. Without one, GitHub allows 60
-   requests an hour.
+1. Confirm the daily job ran, in Vercel's logs after 18:00 UTC.
+2. Add a `GITHUB_TOKEN` limited to public repositories, read-only, before sharing the site widely.
+   Without one, GitHub allows 60 requests an hour for the whole site.
 
 ## Open items
 

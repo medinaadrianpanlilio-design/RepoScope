@@ -26,3 +26,12 @@ leave out the archive download, which Phase 2 must measure on Vercel.
 
 **Known limit.** A file over 1 MB is skipped, so imports of it are not edges even though it exists.
 The checks found this for a few large modules. It is reported as a skipped file, not as Unresolved.
+
+**Measured on Vercel,** with date-fns (1,785 source files, 5,366 dependencies): the full analysis took
+17.7 s, and the graph endpoint returned 465 KB in about 4 s. A repository over the file limit fails
+in about 4 s with a message naming the limit.
+
+**Measured in the browser** on the same repository: the grouped graph is ready in 2 to 3 s, opening a
+folder of 1,660 files takes about 3.5 s, and panning 250 nodes held 57 frames a second in a headless
+browser. Laying out all 1,785 files at once takes about 14 s, off the main thread, so the page shows
+that it's arranging the graph. The grouped view means few people will reach that case.

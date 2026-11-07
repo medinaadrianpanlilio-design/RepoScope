@@ -7,19 +7,28 @@ import {
   File,
   FileCode,
   Folder,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Share2,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { ResizeHandle, useStoredWidth } from "@/components/resize-handle";
 import { githubFileUrl } from "@/lib/graph/details";
 import { buildTree, extensionOf, extensionsOf, searchFiles, type TreeFolder } from "@/lib/graph/tree";
 import type { GraphFile, GraphPayload } from "@/lib/graph/types";
 import { foldersOf } from "@/lib/graph/view";
+import { clamp, isTypingTarget } from "@/lib/ui/layout";
 import { DependencyInspector, SourceView, useFileSource } from "../file-views";
 
 /** A file RepoScope didn't analyze, such as a stylesheet or image. It opens on GitHub. */
 type OtherEntry = { id: null; path: string };
 type Entry = GraphFile | OtherEntry;
+
+const TREE_LIMITS = { min: 200, max: 520 };
+const CONNECTIONS_LIMITS = { min: 220, max: 520 };
 
 type Props = {
   repositoryId: string;
@@ -79,6 +88,48 @@ function Workspace({
   const [open, setOpen] = useState(() => new Set(selected ? foldersOf(selected.path) : []));
   const [query, setQuery] = useState("");
   const [extension, setExtension] = useState("");
+  const [showTree, setShowTree] = useState(true);
+  const [showConnections, setShowConnections] = useState(true);
+  const [treeWidth, setTreeWidth] = useStoredWidth("reposcope:tree", 280, TREE_LIMITS);
+  const [connectionsWidth, setConnectionsWidth] = useStoredWidth(
+    "reposcope:connections",
+    300,
+    CONNECTIONS_LIMITS,
+  );
+  const searchInput = useRef<HTMLInputElement>(null);
+  const rows = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "/" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        setShowTree(true);
+        requestAnimationFrame(() => searchInput.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function focusRow(move: (current: number, last: number) => number) {
+    const items = [...(rows.current?.querySelectorAll<HTMLElement>("a, button") ?? [])];
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    items[clamp(move(current, items.length - 1), 0, items.length - 1)]?.focus();
+  }
+
+  function onRowsKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const row = (event.target as HTMLElement).closest<HTMLElement>("a, button");
+    const expanded = row?.getAttribute("aria-expanded");
+
+    if (event.key === "ArrowDown") focusRow((current) => current + 1);
+    else if (event.key === "ArrowUp") focusRow((current) => current - 1);
+    else if (event.key === "Home") focusRow(() => 0);
+    else if (event.key === "End") focusRow((_current, last) => last);
+    else if (event.key === "ArrowRight" && expanded === "false") row?.click();
+    else if (event.key === "ArrowLeft" && expanded === "true") row?.click();
+    else return;
+    event.preventDefault();
+  }
 
   const entries = useMemo<Entry[]>(
     () => [...data.files, ...(data.otherFiles ?? []).map((path) => ({ id: null, path }))],
@@ -148,18 +199,48 @@ function Workspace({
 
   return (
     <div className="relative min-h-[560px] flex-1">
-      <div className="flex flex-col lg:absolute lg:inset-0 lg:grid lg:grid-cols-[280px_minmax(0,1fr)_300px]">
+      <div
+        className="flex flex-col lg:absolute lg:inset-0 lg:grid"
+        style={{
+          gridTemplateColumns: [
+            showTree && `${treeWidth}px`,
+            "minmax(0, 1fr)",
+            selected && showConnections && `${connectionsWidth}px`,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        }}
+      >
         <nav
           aria-label="Files"
-          className="flex max-h-80 flex-col border-b border-line bg-sidebar lg:max-h-none lg:min-h-0 lg:border-r lg:border-b-0"
+          className={`relative flex max-h-80 flex-col border-b border-line bg-sidebar lg:max-h-none lg:min-h-0 lg:border-r lg:border-b-0 ${
+            showTree ? "" : "lg:hidden"
+          }`}
         >
+          <ResizeHandle
+            label="Resize file tree"
+            side="left"
+            width={treeWidth}
+            onChange={setTreeWidth}
+            className="hidden lg:block"
+            {...TREE_LIMITS}
+          />
           <div className="space-y-2 border-b border-line p-2">
             <label className="block">
               <span className="sr-only">Search file names</span>
               <input
+                ref={searchInput}
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    focusRow(() => 0);
+                  } else if (event.key === "Escape") {
+                    setQuery("");
+                  }
+                }}
                 placeholder={`Search ${visibleEntries.length.toLocaleString("en-US")} files`}
                 className="field"
               />
@@ -194,7 +275,11 @@ function Workspace({
             </p>
           )}
 
-          <div className="min-h-0 flex-1 overflow-auto p-1 text-xs">
+          <div
+            ref={rows}
+            onKeyDown={onRowsKeyDown}
+            className="min-h-0 flex-1 overflow-auto p-1 text-xs"
+          >
             {query.trim() ? (
               matches.length === 0 ? (
                 <p className="p-2 text-muted">No matching files.</p>
@@ -238,9 +323,15 @@ function Workspace({
             repositoryUrl={repositoryUrl}
             commitSha={commitSha}
             onOpenFile={openFile}
+            showTree={showTree}
+            onToggleTree={() => setShowTree(!showTree)}
+            showConnections={showConnections}
+            onToggleConnections={() => setShowConnections(!showConnections)}
+            connectionsWidth={connectionsWidth}
+            onConnectionsWidthChange={setConnectionsWidth}
           />
         ) : (
-          <div className="flex items-center justify-center p-8 text-sm text-muted lg:col-span-2">
+          <div className="flex items-center justify-center p-8 text-sm text-muted">
             Choose a file to read its source and see how it connects.
           </div>
         )}
@@ -315,7 +406,19 @@ function FileView({
   repositoryUrl,
   commitSha,
   onOpenFile,
+  showTree,
+  onToggleTree,
+  showConnections,
+  onToggleConnections,
+  connectionsWidth,
+  onConnectionsWidthChange,
 }: {
+  showTree: boolean;
+  onToggleTree: () => void;
+  showConnections: boolean;
+  onToggleConnections: () => void;
+  connectionsWidth: number;
+  onConnectionsWidthChange: (width: number) => void;
   data: GraphPayload;
   file: GraphFile;
   repositoryId: string;
@@ -331,6 +434,11 @@ function FileView({
     <>
       <section aria-label="Source" className="flex min-h-0 min-w-0 flex-col">
         <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-3 py-2 text-xs">
+          <PanelToggle
+            label={showTree ? "Hide file tree" : "Show file tree"}
+            onClick={onToggleTree}
+            icon={showTree ? <PanelLeftClose size={14} aria-hidden /> : <PanelLeftOpen size={14} aria-hidden />}
+          />
           <h2 className="min-w-0 flex-1 basis-full truncate font-mono sm:basis-0" title={file.path}>
             {file.path}
           </h2>
@@ -351,6 +459,17 @@ function FileView({
           >
             GitHub <ExternalLink size={12} aria-hidden />
           </a>
+          <PanelToggle
+            label={showConnections ? "Hide connections" : "Show connections"}
+            onClick={onToggleConnections}
+            icon={
+              showConnections ? (
+                <PanelRightClose size={14} aria-hidden />
+              ) : (
+                <PanelRightOpen size={14} aria-hidden />
+              )
+            }
+          />
         </header>
         <div className="min-h-64 flex-1 overflow-auto">
           <SourceView {...state} />
@@ -359,8 +478,19 @@ function FileView({
 
       <aside
         aria-label="File connections"
-        className="min-h-0 overflow-y-auto border-t border-line bg-sidebar lg:border-t-0 lg:border-l"
+        className={`relative min-h-0 border-t border-line bg-sidebar lg:border-t-0 lg:border-l ${
+          showConnections ? "" : "lg:hidden"
+        }`}
       >
+        <ResizeHandle
+          label="Resize connections"
+          side="right"
+          width={connectionsWidth}
+          onChange={onConnectionsWidthChange}
+          className="hidden lg:block"
+          {...CONNECTIONS_LIMITS}
+        />
+        <div className="h-full overflow-y-auto">
         <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
         <section className="p-3 text-xs">
           <h3 className="font-medium">Exports {state.source && `(${exported.length})`}</h3>
@@ -375,8 +505,31 @@ function FileView({
             ))}
           </ul>
         </section>
+        </div>
       </aside>
     </>
+  );
+}
+
+function PanelToggle({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="hidden p-0.5 text-muted hover:text-foreground lg:inline-flex"
+    >
+      {icon}
+    </button>
   );
 }
 

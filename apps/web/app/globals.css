@@ -39,6 +39,20 @@ body {
   }
 }
 
+:is(a, button, summary, select, [role="separator"]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.react-flow__node:focus-visible {
+  outline: none;
+}
+
+.react-flow__node:focus-visible .graph-node {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
 .graph-node {
   display: flex;
   align-items: center;
