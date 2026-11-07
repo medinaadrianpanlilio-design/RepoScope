@@ -7,6 +7,7 @@ import type { AnalysisStats } from "@/lib/analysis/pipeline";
 import { getLatestCompletedRun, getLatestRun } from "@/lib/analysis/store";
 import { getRepository } from "@/lib/repositories/queries";
 import { AnalysisPanel } from "./analysis-panel";
+import { RepoTabs } from "../repo-tabs";
 import { AnalysisResults } from "./analysis-results";
 
 type Props = PageProps<"/repositories/[id]/overview">;
@@ -39,6 +40,10 @@ async function Overview({ params, searchParams }: Pick<Props, "params" | "search
         {repository.full_name}
       </h1>
       {repository.description && <p className="mt-2 text-muted">{repository.description}</p>}
+
+      <div className="mt-6">
+        <RepoTabs repositoryId={repository.id} active="overview" />
+      </div>
 
       <dl className="mt-8 grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3">
         <Fact label="Default branch" value={repository.default_branch} />

@@ -38,3 +38,48 @@ body {
     @apply inline-flex items-center justify-center rounded-md border border-line px-3 py-1.5 text-sm hover:bg-elevated;
   }
 }
+
+.graph-node {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 190px;
+  height: 38px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 11px;
+}
+
+.graph-node-folder {
+  background: var(--color-elevated);
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.graph-node:hover {
+  border-color: var(--color-muted);
+}
+
+.react-flow__node.is-selected .graph-node {
+  border-color: var(--color-foreground);
+  box-shadow: 0 0 0 1px var(--color-foreground);
+}
+
+.react-flow__node.is-incoming .graph-node {
+  border-color: var(--color-accent-2);
+}
+
+.react-flow__node.is-outgoing .graph-node {
+  border-color: var(--color-accent);
+}
+
+.react-flow__node.is-dimmed {
+  opacity: 0.3;
+}
+
+.graph-handle {
+  visibility: hidden;
+}

@@ -4,8 +4,9 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phases 1 and 2 are built but not deployed: paste a repo link and watch it get analyzed, with real
-stats on its overview page. Next is Phase 3, the interactive graph.
+Phases 1 and 2 are done and live at https://repo-scope-delta.vercel.app: paste a repo link and watch
+it get analyzed, with real stats on its overview page. Phase 3 is in progress: the interactive graph
+works, and the file panel and explorer are next.
 
 ## Done
 
@@ -30,26 +31,39 @@ stats on its overview page. Next is Phase 3, the interactive graph.
 - 09 Results schema: files, Dependency edges, Unresolved imports and run statistics. No source code
   columns. Results of private repos are hidden, and only the server can write.
 - 10 Background analysis: `POST /api/repositories/[id]/analyze` and `GET /api/analysis/[id]`. Tested
-  on real repositories, including simultaneous requests. Not yet run on Vercel, and a run killed by
-  the time limit is covered by unit tests only.
+  on real repositories, including simultaneous requests, and on Vercel with repositories of up to
+  130 source files. A run killed by the time limit is covered by unit tests only.
 - 11 Live progress screen, real overview stats, dashboard status and failure screens. Tested in a
   real browser.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 124 engine tests, 121 web tests and 7 browser tests pass, and the production build
-passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+Last results: 124 engine tests and 135 web tests pass, and the production build passes. On
+microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+
+**Phase 3: Visualization (tickets 01-05)**
+
+- 01-04 Graph data API, React Flow and ELK canvas, node and edge styles, search, highlighting and
+  filters
+- 05 Folder grouping above 200 files. Smoothness near the 2,000-file limit isn't measured yet.
 
 ## Next
 
-Phase 3: the interactive graph. Start at `.scratch/phase-3-visualization/spec.md`. The full plan and
-build order are in `docs/spec.md`.
+Phase 3 tickets, in order:
+
+1. 06 Fetch source on demand
+2. 07 Build the file panel
+3. 08 Build the explorer page
+4. 09 Add the dependency inspector
+5. 10 Check responsive and keyboard use
+
+The full plan and build order are in `docs/spec.md`.
 
 ## Needs the owner
 
-1. Deploy on Vercel. See the Deploy section of `README.md`. Deployment has not been tested yet. Set
-   `CRON_SECRET` there to a long random value, or the daily job refuses to run.
-2. Test a real sign-up and its confirmation email.
+1. Set `CRON_SECRET` in Vercel to a long random value, or the daily job refuses to run.
+2. Point Supabase's Site URL and redirect URL at the live site, then test a real sign-up and its
+   confirmation email.
 3. Add a `GITHUB_TOKEN` limited to public repositories, read-only. Without one, GitHub allows 60
    requests an hour.
 
