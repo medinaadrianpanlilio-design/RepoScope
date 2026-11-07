@@ -26,3 +26,18 @@ With the file in the system message, chat obeyed 12 of 28 attacks. With the file
 and a reminder beside each question, all 56 attempts across summaries and chat held. A small model
 can't be guaranteed safe against every attack, so AI output stays labeled, and is only ever shown as
 text. It never changes analysis facts and can't take actions.
+
+## Quality of Qwen3.5-4B
+
+Measured on real files from four repositories, on a GTX 1660 Ti, using the real prompts.
+
+- **Summaries:** 20 files took 6.4 s on average. All 59 names cited in backticks exist in the code or
+  analysis, checked by script. Four summaries were also read in full and were accurate.
+- **Chat:** 19 of 20 questions with known answers were right. It refused all 5 unknowable questions,
+  rejected all 5 fake exports and all 5 unrelated files, and got 4 of 5 real importers.
+- **Weak spot:** it sometimes misreads the lists of connected files. One real importer was denied, and
+  one answer cited the wrong list. The dependency inspector is exact, so use it for those questions.
+
+This is good enough for summaries and questions about one file's code. Connection facts should come
+from the analysis, not the model. Summary wording was only spot-checked, so names being real doesn't
+prove every sentence is right.

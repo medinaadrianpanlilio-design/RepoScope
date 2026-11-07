@@ -6,7 +6,7 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
-inspector. Phase 4, Local AI, is in progress: file summaries and chat work with a model on your own PC.
+inspector. Phase 4 is done too: file summaries and chat run on a model on your own PC. Next is Phase 5.
 
 ## Done
 
@@ -56,16 +56,17 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 - 10 Resizable and collapsible panels, keyboard use across the graph and explorer, and browser tests
   in `apps/web/e2e/repository.spec.ts`.
 
-**Phase 4: Local AI (in progress)**
+**Phase 4: Local AI (all 8 tickets)**
 
 - 01 Qwen3.5-4B is in `E:\tools\models`, and is the instruction-tuned model.
 - 02 Browsers can reach local AI from the deployed site. See `docs/adr/0005`.
 - 03, 06, 07 Setup screen, chat context and repo chat, with prompt-injection tests.
+- 04, 05 File summaries, saved privately per user, with corrections kept as future training data.
+- 08 Quality measured: see `docs/adr/0005`.
 
 ## Next
 
-1. Run `supabase/migrations/20261107020000_ai_summaries.sql` in the Supabase SQL editor (tickets 04, 05)
-2. 08 Check Qwen's quality on real files
+Phase 5: Insights and change impact. Start at `.scratch/phase-5-insights-impact/spec.md`.
 
 The full plan and build order are in `docs/spec.md`.
 
