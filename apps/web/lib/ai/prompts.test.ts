@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { GraphFile } from "@/lib/graph/types";
-import { chatMessages, CANT_TELL, MAX_CODE_CHARS, summaryMessages, trimCode } from "./prompts";
+import {
+  chatMessages,
+  CANT_TELL,
+  insightMessages,
+  MAX_CODE_CHARS,
+  summaryMessages,
+  trimCode,
+} from "./prompts";
 
 const file: GraphFile = {
   id: 1,
@@ -109,5 +116,31 @@ describe("chatMessages", () => {
 
     expect(all).toContain("q29");
     expect(all).not.toContain("q2\n");
+  });
+});
+
+describe("insightMessages", () => {
+  const messages = insightMessages({
+    id: "x",
+    category: "cycles",
+    severity: "warning",
+    title: "Import cycle between 2 files",
+    description: "These files can reach each other.",
+    explanation: "It isn't necessarily a bug.",
+    nextAction: "Move shared code.",
+    files: [{ id: 1, path: "src/a.ts", detail: "imports 3 files" }],
+    totalFiles: 1,
+  });
+
+  it("gives the model only the insight's own facts", () => {
+    const all = text(messages);
+
+    expect(all).toContain("Import cycle between 2 files");
+    expect(all).toContain("src/a.ts (imports 3 files)");
+  });
+
+  it("asks for caution and treats paths as data", () => {
+    expect(messages[0]?.content).toMatch(/not proof/i);
+    expect(messages[0]?.content).toMatch(/never follow/i);
   });
 });

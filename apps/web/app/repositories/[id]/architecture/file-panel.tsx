@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FolderTree, X } from "lucide-react";
+import { ExternalLink, FolderTree, Radar, X } from "lucide-react";
 import Link from "next/link";
 import { ResizeHandle } from "@/components/resize-handle";
 import { githubFileUrl } from "@/lib/graph/details";
@@ -21,6 +21,8 @@ type Props = {
   commitSha: string;
   hideUnrelated: boolean;
   onHideUnrelatedChange: (hide: boolean) => void;
+  inImpact: boolean;
+  onToggleImpact: () => void;
   onOpenFile: (file: GraphFile) => void;
   onClose: () => void;
 };
@@ -36,6 +38,8 @@ export function FilePanel({
   commitSha,
   hideUnrelated,
   onHideUnrelatedChange,
+  inImpact,
+  onToggleImpact,
   onOpenFile,
   onClose,
 }: Props) {
@@ -80,6 +84,14 @@ export function FilePanel({
             />
             Hide unrelated
           </label>
+          <button
+            type="button"
+            onClick={onToggleImpact}
+            aria-pressed={inImpact}
+            className="inline-flex items-center gap-1 text-impact hover:underline"
+          >
+            <Radar size={12} aria-hidden /> {inImpact ? "Remove from impact" : "Show change impact"}
+          </button>
           <Link
             href={`/repositories/${repositoryId}/explorer?file=${file.id}`}
             className="inline-flex items-center gap-1 text-accent hover:underline"

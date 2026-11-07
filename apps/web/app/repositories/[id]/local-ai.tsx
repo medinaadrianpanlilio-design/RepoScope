@@ -32,30 +32,39 @@ export function LocalAiSection(props: Props) {
         Local AI
       </h3>
 
-      {ai.phase === "idle" && (
-        <>
-          <p className="mt-1 text-muted">
-            Explain this file with a model on your own computer. Your code goes straight from this
-            browser to it, never through RepoScope.
-          </p>
-          <button type="button" onClick={() => connectLocalAi()} className="button-secondary mt-2">
-            Connect local AI
-          </button>
-        </>
-      )}
-
-      {ai.phase === "checking" && (
-        <p role="status" className="mt-1 text-muted">
-          Looking for a model on this computer. Your browser may ask for permission first.
-        </p>
-      )}
-
-      {ai.phase === "failed" && <Setup reason={ai.reason} endpoint={ai.endpoint} />}
-
-      {ai.phase === "connected" && (
+      {ai.phase === "connected" ? (
         <Connected {...props} endpoint={ai.endpoint} model={ai.model} />
+      ) : (
+        <LocalAiConnect />
       )}
     </section>
+  );
+}
+
+/** Everything before a connection exists: the offer, the wait, and setup help. */
+export function LocalAiConnect() {
+  const ai = useLocalAi();
+
+  if (ai.phase === "checking") {
+    return (
+      <p role="status" className="mt-1 text-muted">
+        Looking for a model on this computer. Your browser may ask for permission first.
+      </p>
+    );
+  }
+  if (ai.phase === "failed") return <Setup reason={ai.reason} endpoint={ai.endpoint} />;
+  if (ai.phase === "connected") return null;
+
+  return (
+    <>
+      <p className="mt-1 text-muted">
+        Uses a model on your own computer. Your code goes straight from this browser to it, never
+        through RepoScope.
+      </p>
+      <button type="button" onClick={() => connectLocalAi()} className="button-secondary mt-2">
+        Connect local AI
+      </button>
+    </>
   );
 }
 

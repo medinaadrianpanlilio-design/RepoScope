@@ -1,11 +1,12 @@
 import Link from "next/link";
 
-type Props = { repositoryId: string; active: "overview" | "architecture" | "explorer" };
+type Props = { repositoryId: string; active: "overview" | "architecture" | "explorer" | "insights" };
 
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "architecture", label: "Architecture" },
   { key: "explorer", label: "Explorer" },
+  { key: "insights", label: "Insights" },
 ] as const;
 
 export function RepoTabs({ repositoryId, active }: Props) {

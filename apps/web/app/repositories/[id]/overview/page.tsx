@@ -9,6 +9,7 @@ import { getRepository } from "@/lib/repositories/queries";
 import { AnalysisPanel } from "./analysis-panel";
 import { RepoTabs } from "../repo-tabs";
 import { AnalysisResults } from "./analysis-results";
+import { InsightsSummary } from "./insights-summary";
 
 type Props = PageProps<"/repositories/[id]/overview">;
 
@@ -77,6 +78,16 @@ async function Overview({ params, searchParams }: Pick<Props, "params" | "search
           commitSha={completed.commit_sha}
           completedAt={completed.completed_at}
         />
+      )}
+
+      {completed && (
+        <Suspense fallback={<p className="mt-10 text-sm text-muted">Reading the analysis…</p>}>
+          <InsightsSummary
+            repositoryId={repository.id}
+            analysisId={completed.id}
+            stats={completed.stats as AnalysisStats}
+          />
+        </Suspense>
       )}
     </>
   );

@@ -25,15 +25,18 @@ import { useStoredWidth } from "@/components/resize-handle";
 import {
   RELATIONSHIP_TYPES,
   type GraphData,
+  type GraphFile,
   type GraphPayload,
   type GraphView,
   type RelationshipType,
   type ViewNode,
 } from "@/lib/graph/types";
-import { connectedTo, defaultExpanded, foldersOf, toGraphView } from "@/lib/graph/view";
+import { changeImpact, impactByNode } from "@/lib/graph/impact";
+import { connectedTo, defaultExpanded, foldersOf, toGraphView, visibleNodeId } from "@/lib/graph/view";
 import { isTypingTarget, nextIndex } from "@/lib/ui/layout";
 import { FilePanel, PANEL_LIMITS } from "./file-panel";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
+import { ImpactPanel } from "./impact-panel";
 
 type Positions = Record<string, { x: number; y: number }>;
 
@@ -113,6 +116,8 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   const [directory, setDirectory] = useState("");
   const [query, setQuery] = useState("");
   const [activeMatch, setActiveMatch] = useState(0);
+  const [impactIds, setImpactIds] = useState<number[]>([]);
+  const [onlyAffected, setOnlyAffected] = useState(false);
   const [panelWidth, setPanelWidth] = useStoredWidth("reposcope:panel", 420, PANEL_LIMITS);
   const searchInput = useRef<HTMLInputElement>(null);
   const [layoutRun, setLayoutRun] = useState(0);
@@ -191,7 +196,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     if (positions) fitTo(null);
     // Only a change of what's shown should move the camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hideUnrelated, directory]);
+  }, [hideUnrelated, directory, onlyAffected]);
 
   useEffect(() => {
     const onResize = () => fitTo(null);
@@ -218,12 +223,25 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     [selected, view.edges],
   );
 
+  const impactSources = useMemo(
+    () => data.files.filter((file) => impactIds.includes(file.id)),
+    [data.files, impactIds],
+  );
+  const impacted = useMemo(() => changeImpact(data, impactIds), [data, impactIds]);
+  const impactNodes = useMemo(() => impactByNode(impacted, expanded), [impacted, expanded]);
+  const sourceNodes = useMemo(
+    () => new Set(impactSources.map((file) => visibleNodeId(file, expanded))),
+    [impactSources, expanded],
+  );
+  const impactActive = impactIds.length > 0;
+
   const nodes = useMemo<Node[]>(() => {
     if (!positions) return [];
 
     const isVisible = (node: ViewNode) => {
       if (directory && node.path !== directory && !node.path.startsWith(`${directory}/`)) return false;
       if (node.kind === "file" && hiddenLanguages.has(node.file.language)) return false;
+      if (impactActive && onlyAffected) return sourceNodes.has(node.id) || impactNodes.has(node.id);
       if (hideUnrelated && related && node.id !== selected) {
         return related.incoming.has(node.id) || related.outgoing.has(node.id);
       }
@@ -233,7 +251,13 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     return view.nodes.flatMap((node) => {
       const position = dragged[node.id] ?? positions[node.id];
       if (!position) return [];
-      const state = !related
+      const state = impactActive
+        ? sourceNodes.has(node.id)
+          ? "is-impact-source"
+          : impactNodes.has(node.id)
+            ? "is-impacted"
+            : "is-dimmed"
+        : !related
         ? ""
         : node.id === selected
           ? "is-selected"
@@ -247,7 +271,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           id: node.id,
           type: node.kind,
           position,
-          data: node,
+          data: { ...node, affected: impactNodes.get(node.id) },
           ariaLabel:
             node.kind === "file"
               ? `File ${node.path}`
@@ -259,20 +283,40 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         },
       ];
     });
-  }, [view.nodes, positions, dragged, related, selected, directory, hiddenLanguages, hideUnrelated]);
+  }, [
+    view.nodes,
+    positions,
+    dragged,
+    related,
+    selected,
+    directory,
+    hiddenLanguages,
+    hideUnrelated,
+    impactActive,
+    onlyAffected,
+    sourceNodes,
+    impactNodes,
+  ]);
 
   const edges = useMemo<Edge[]>(() => {
     const shown = new Set(nodes.filter((node) => !node.hidden).map((node) => node.id));
     return view.edges.map((edge) => {
       const style = EDGE_STYLES[edge.type];
       const touches = selected !== null && (edge.source === selected || edge.target === selected);
-      const color = !selected
-        ? "#4b5563"
-        : !touches
-          ? "#262c38"
-          : edge.source === selected
-            ? "#5b9cff"
-            : "#8b7cff";
+      const inImpact =
+        impactNodes.has(edge.source) &&
+        (impactNodes.has(edge.target) || sourceNodes.has(edge.target));
+      const color = impactActive
+        ? inImpact
+          ? "#e0a458"
+          : "#262c38"
+        : !selected
+          ? "#4b5563"
+          : !touches
+            ? "#262c38"
+            : edge.source === selected
+              ? "#5b9cff"
+              : "#8b7cff";
       return {
         id: edge.id,
         source: edge.source,
@@ -285,7 +329,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         style: { stroke: color, strokeWidth: style.width, strokeDasharray: style.dash },
       };
     });
-  }, [view.edges, nodes, hiddenTypes, selected]);
+  }, [view.edges, nodes, hiddenTypes, selected, impactActive, impactNodes, sourceNodes]);
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -324,6 +368,12 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     } else {
       setSelected(node.id === selected ? null : node.id);
     }
+  }
+
+  function toggleImpact(file: GraphFile) {
+    setImpactIds((ids) =>
+      ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id],
+    );
   }
 
   function onCanvasKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -545,8 +595,25 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           commitSha={source.commitSha}
           hideUnrelated={hideUnrelated}
           onHideUnrelatedChange={setHideUnrelated}
+          inImpact={impactIds.includes(selectedFile.id)}
+          onToggleImpact={() => toggleImpact(selectedFile)}
           onOpenFile={revealFile}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {impactActive && (
+        <ImpactPanel
+          sources={impactSources}
+          impacted={impacted}
+          onlyAffected={onlyAffected}
+          onOnlyAffectedChange={setOnlyAffected}
+          onRemove={toggleImpact}
+          onOpenFile={revealFile}
+          onClear={() => {
+            setImpactIds([]);
+            setOnlyAffected(false);
+          }}
         />
       )}
 

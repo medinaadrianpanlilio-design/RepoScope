@@ -13,7 +13,7 @@ const LANGUAGE_COLORS: Record<string, string> = {
 };
 
 export type FileNodeData = { name: string; path: string; file: GraphFile };
-export type FolderNodeData = { name: string; path: string; fileCount: number };
+export type FolderNodeData = { name: string; path: string; fileCount: number; affected?: number };
 
 const handles = (
   <>
@@ -45,7 +45,7 @@ export function FileNode({ data }: NodeProps<Node<FileNodeData>>) {
 }
 
 export function FolderNode({ data }: NodeProps<Node<FolderNodeData>>) {
-  const { name, path, fileCount } = data;
+  const { name, path, fileCount, affected } = data;
 
   return (
     <div className="graph-node graph-node-folder" title={`${path} — click to open`}>
@@ -53,7 +53,7 @@ export function FolderNode({ data }: NodeProps<Node<FolderNodeData>>) {
       <Folder size={14} className="shrink-0 text-accent" aria-hidden />
       <span className="min-w-0 flex-1 truncate font-mono">{name}</span>
       <span className="shrink-0 text-[10px] text-muted">
-        {fileCount} {fileCount === 1 ? "file" : "files"}
+        {affected ? `${affected} of ${fileCount} affected` : `${fileCount} ${fileCount === 1 ? "file" : "files"}`}
       </span>
       <ChevronRight size={12} className="shrink-0 text-muted" aria-hidden />
     </div>

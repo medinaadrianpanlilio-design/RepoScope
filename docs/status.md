@@ -6,7 +6,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
-inspector. Phase 4 is done too: file summaries and chat run on a model on your own PC. Next is Phase 5.
+inspector. Phases 4 and 5 are done too: local AI summaries and chat, insights, and change impact. Next is Phase 6,
+where daily use with Claude Code starts.
 
 ## Done
 
@@ -38,8 +39,8 @@ inspector. Phase 4 is done too: file summaries and chat run on a model on your o
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 125 engine tests and 228 web tests pass, and the production build passes. On
-microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+Last results: 125 engine tests, 256 web tests and 15 browser tests pass, and the production build
+passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 **Phase 3: Visualization (all 10 tickets)**
 
@@ -64,9 +65,16 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 - 04, 05 File summaries, saved privately per user, with corrections kept as future training data.
 - 08 Quality measured: see `docs/adr/0005`.
 
+**Phase 5: Insights and change impact (all 7 tickets)**
+
+- Insights are computed on demand from the saved analysis, in `apps/web/lib/graph/insights.ts`, so no
+  table is needed and rule changes reach old analyses.
+- Change impact is on the graph, from the file panel, and works across several files.
+- The overview has an architecture summary, and local AI can explain an insight.
+
 ## Next
 
-Phase 5: Insights and change impact. Start at `.scratch/phase-5-insights-impact/spec.md`.
+Phase 6: Local folders, sync and MCP. Start at `.scratch/phase-6-mcp/spec.md`.
 
 The full plan and build order are in `docs/spec.md`.
 

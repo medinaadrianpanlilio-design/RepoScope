@@ -13,7 +13,7 @@ function nameOf(path: string): string {
 }
 
 /** The node a file appears as: itself, or the highest closed folder holding it. */
-function visibleNodeId(file: GraphFile, expanded: Set<string>): string {
+export function visibleNodeId(file: GraphFile, expanded: Set<string>): string {
   for (const folder of foldersOf(file.path)) {
     if (!expanded.has(folder)) return `folder:${folder}`;
   }
