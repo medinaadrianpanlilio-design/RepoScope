@@ -59,7 +59,7 @@ export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = 
       return await deps.fail(
         error.code === "invalid_archive"
           ? "GitHub returned an archive RepoScope couldn't read."
-          : "This repository is too large to analyze.",
+          : "This repository is too large to analyze: it unpacks past the 300 MB limit.",
       );
     }
     console.error("Analysis failed:", error instanceof Error ? error.message : "unknown error");
@@ -83,7 +83,7 @@ function toStats(result: AnalysisResult): AnalysisStats {
 function describeDownloadFailure(download: Extract<ArchiveDownload, { ok: false }>): string {
   switch (download.error) {
     case "too_large":
-      return "This repository is too large to analyze.";
+      return "This repository is too large to analyze: its archive is over the 100 MB limit.";
     case "not_found":
       return "This repository is no longer available on GitHub.";
     case "rate_limited":

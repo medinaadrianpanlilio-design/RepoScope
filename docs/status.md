@@ -4,8 +4,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phase 1 is built but not deployed. Phase 2 is 10 of 12 tickets done: analyses run end to end through
-the API, but the website doesn't show them yet.
+Phase 1 is built but not deployed. Phase 2 is 11 of 12 tickets done: paste a repo link and watch it get
+analyzed, with real stats on its overview page. The interactive graph comes in Phase 3.
 
 ## Done
 
@@ -15,7 +15,7 @@ the API, but the website doesn't show them yet.
 - Public repository import, with clear errors for bad links, missing repos and private repos
 - Supabase schema with Row Level Security
 
-**Phase 2: Analysis engine (tickets 01-10)**
+**Phase 2: Analysis engine (tickets 01-11)**
 
 - 01 Rate limiting on import: 20 per hour per visitor, stored as a hash
 - 02 `packages/engine`, wired into the web app
@@ -32,16 +32,17 @@ the API, but the website doesn't show them yet.
 - 10 Background analysis: `POST /api/repositories/[id]/analyze` and `GET /api/analysis/[id]`. Tested
   on real repositories, including simultaneous requests. Not yet run on Vercel, and a run killed by
   the time limit is covered by unit tests only.
+- 11 Live progress screen, real overview stats, dashboard status and failure screens. Tested in a
+  real browser.
 
-Last results: 124 engine tests and 61 web tests pass, and the production build passes. On
-microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+Last results: 124 engine tests, 103 web tests and 7 browser tests pass, and the production build
+passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 ## Next
 
 Remaining Phase 2 tickets, in order:
 
-1. 11 Show real progress and stats
-2. 12 Add the daily maintenance cron
+1. 12 Add the daily maintenance cron
 
 Then Phase 3: the interactive graph. The full plan and build order are in `docs/spec.md`.
 

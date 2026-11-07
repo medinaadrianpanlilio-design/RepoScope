@@ -2,26 +2,36 @@ import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
+import { displayStatus } from "@/lib/analysis/claim";
+import type { AnalysisStats } from "@/lib/analysis/pipeline";
+import { getLatestCompletedRun, getLatestRun } from "@/lib/analysis/store";
 import { getRepository } from "@/lib/repositories/queries";
+import { AnalysisPanel } from "./analysis-panel";
+import { AnalysisResults } from "./analysis-results";
 
 type Props = PageProps<"/repositories/[id]/overview">;
 
-export default function OverviewPage({ params }: Props) {
+export default function OverviewPage({ params, searchParams }: Props) {
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
       <Suspense fallback={<p className="text-sm text-muted">Loading repository…</p>}>
-        <Overview params={params} />
+        <Overview params={params} searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Overview({ params }: Pick<Props, "params">) {
+async function Overview({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { id } = await params;
+  const { analyze } = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
 
   const repository = await getRepository(id);
   if (!repository) notFound();
+
+  const [latest, completed] = await Promise.all([getLatestRun(id), getLatestCompletedRun(id)]);
+  const run = latest && { id: latest.id, ...displayStatus(latest, new Date()) };
+  const panelKey = `${run?.id ?? "none"}:${run?.status ?? "none"}`;
 
   return (
     <>
@@ -48,13 +58,21 @@ async function Overview({ params }: Pick<Props, "params">) {
         </div>
       </dl>
 
-      <div className="mt-8 rounded-md border border-dashed border-line p-8">
-        <h2 className="font-medium">Not analyzed yet</h2>
-        <p className="mt-1 text-sm text-muted">
-          This repository is imported, but RepoScope&apos;s analysis engine isn&apos;t built yet.
-          Files, dependencies and the architecture graph will appear here once it is.
-        </p>
-      </div>
+      <AnalysisPanel
+        key={panelKey}
+        repositoryId={repository.id}
+        run={run}
+        hasResults={completed !== null}
+        autoStart={analyze === "1"}
+      />
+
+      {completed && (
+        <AnalysisResults
+          stats={completed.stats as AnalysisStats}
+          commitSha={completed.commit_sha}
+          completedAt={completed.completed_at}
+        />
+      )}
     </>
   );
 }

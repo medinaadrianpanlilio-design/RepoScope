@@ -28,7 +28,7 @@ export function ImportForm({ example }: { example?: string }) {
         setPending(false);
         return;
       }
-      router.push(`/repositories/${payload.data.repositoryId}/overview`);
+      router.push(`/repositories/${payload.data.repositoryId}/overview?analyze=1`);
     } catch {
       setError("We couldn't reach RepoScope. Check your connection and try again.");
       setPending(false);

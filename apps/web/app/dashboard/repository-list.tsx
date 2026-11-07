@@ -68,7 +68,7 @@ export function RepositoryList({ repositories }: { repositories: SavedRepository
                   {repository.primary_language && (
                     <span className="block">{repository.primary_language}</span>
                   )}
-                  <span className="block">Not analyzed yet</span>
+                  <span className="block">{repository.analysis_label}</span>
                 </span>
               </Link>
             </li>

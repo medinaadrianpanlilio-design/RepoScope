@@ -30,8 +30,8 @@ export default function Home() {
           <ImportForm example="https://github.com/medinaadrianpanlilio-design/portfolio-site" />
         </div>
         <p className="mt-6 text-sm text-muted">
-          RepoScope is in early development. Importing works today; the analysis engine and graph
-          are being built next.
+          RepoScope is in early development. JavaScript and TypeScript analysis works today; the
+          interactive graph is being built next.
         </p>
       </section>
 

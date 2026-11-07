@@ -1,4 +1,6 @@
 import "server-only";
+import { displayStatus, type RunRecord } from "@/lib/analysis/claim";
+import { analysisLabel } from "@/lib/analysis/present";
 import type { RepositoryMetadata } from "@/lib/github/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +17,7 @@ export type Repository = {
   created_at: string;
 };
 
-export type SavedRepository = Repository & { saved_at: string };
+export type SavedRepository = Repository & { saved_at: string; analysis_label: string };
 
 const COLUMNS =
   "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at";
@@ -78,7 +80,41 @@ export async function listSavedRepositories(): Promise<SavedRepository[]> {
     .overrideTypes<{ created_at: string; repositories: Repository }[], { merge: false }>();
 
   if (error) throw new Error(`Could not list repositories: ${error.code}`);
-  return data.map((row) => ({ ...row.repositories, saved_at: row.created_at }));
+
+  const latestRuns = await latestRunsByRepository(data.map((row) => row.repositories.id));
+  return data.map((row) => ({
+    ...row.repositories,
+    saved_at: row.created_at,
+    analysis_label: labelFor(latestRuns.get(row.repositories.id)),
+  }));
+}
+
+type DashboardRun = RunRecord & { repository_id: string; completed_at: string | null };
+
+async function latestRunsByRepository(ids: string[]) {
+  const latest = new Map<string, DashboardRun>();
+  if (ids.length === 0) return latest;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analysis_runs")
+    .select("id, repository_id, status, error_message, created_at, started_at, completed_at")
+    .in("repository_id", ids)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Could not load analysis status: ${error.code}`);
+  for (const run of data) {
+    if (!latest.has(run.repository_id)) latest.set(run.repository_id, run);
+  }
+  return latest;
+}
+
+function labelFor(run: DashboardRun | undefined): string {
+  if (!run) return analysisLabel(null);
+  return analysisLabel({
+    status: displayStatus(run, new Date()).status,
+    completedAt: run.completed_at,
+  });
 }
 
 /** Removes the repository from the user's dashboard. The shared record stays. */

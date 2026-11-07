@@ -154,3 +154,30 @@ export async function getRun(id: string) {
   if (error) throw new Error(`Could not load run: ${error.code}`);
   return data;
 }
+
+export async function getLatestRun(repositoryId: string): Promise<RunRecord | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analysis_runs")
+    .select(RUN_COLUMNS)
+    .eq("repository_id", repositoryId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load run: ${error.code}`);
+  return data;
+}
+
+export async function getLatestCompletedRun(repositoryId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analysis_runs")
+    .select("id, commit_sha, completed_at, stats")
+    .eq("repository_id", repositoryId)
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load results: ${error.code}`);
+  return data;
+}

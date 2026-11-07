@@ -71,3 +71,19 @@ test.describe("signed in", () => {
     await expect(page.getByRole("alert").filter({ hasText: "don't match" })).toBeVisible();
   });
 });
+
+test.describe("live analysis", () => {
+  test.skip(!process.env.E2E_LIVE, "Set E2E_LIVE=1 to import a real repository.");
+
+  test("import shows real progress, then real results", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto("/");
+    await page.getByLabel("GitHub repository URL").fill(process.env.E2E_REPO ?? "");
+    await page.getByRole("button", { name: "Import repository" }).click();
+
+    await expect(page).toHaveURL(/overview/);
+    await expect(page.getByText("Internal dependencies")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("heading", { name: "Languages" })).toBeVisible();
+    await expect(page.getByText("Not analyzed yet")).toHaveCount(0);
+  });
+});
