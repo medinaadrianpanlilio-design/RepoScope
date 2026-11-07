@@ -16,6 +16,16 @@ export type GraphEdge = { source: number; target: number; type: RelationshipType
 
 export type GraphData = { files: GraphFile[]; edges: GraphEdge[] };
 
+export type UnresolvedImport = { fileId: number; specifier: string; line: number };
+
+/** What the graph endpoint returns. otherFiles is null for an analysis made before it existed. */
+export type GraphPayload = GraphData & {
+  cycles: string[][];
+  unresolved: UnresolvedImport[];
+  otherFiles: string[] | null;
+  otherFileCount: number;
+};
+
 export type ViewNode =
   | { id: string; kind: "file"; path: string; name: string; file: GraphFile }
   | { id: string; kind: "folder"; path: string; name: string; fileCount: number };

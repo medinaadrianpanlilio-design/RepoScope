@@ -8,15 +8,20 @@ import {
   type LimitExceeded,
 } from "@reposcope/engine";
 import type { ArchiveDownload } from "@/lib/github/archive";
+import { ANALYSIS_VERSION } from "./claim";
 
 export type RunStatus = "fetching" | "scanning" | "parsing" | "saving";
 
 const MAX_STORED_DIRECTORIES = 50;
 const MAX_STORED_CYCLES = 100;
 const MAX_STORED_UNANALYZABLE = 100;
+const MAX_STORED_OTHER_FILES = 5000;
 
 export type AnalysisStats = Pick<AnalysisResult, "totals" | "languages" | "directories" | "cycles"> & {
+  version: string;
   cycleCount: number;
+  otherFiles: string[];
+  otherFileCount: number;
   externalPackages: string[];
   unanalyzable: AnalysisResult["unanalyzable"];
   unanalyzableCount: number;
@@ -69,6 +74,9 @@ export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = 
 
 function toStats(result: AnalysisResult): AnalysisStats {
   return {
+    version: ANALYSIS_VERSION,
+    otherFiles: result.otherFiles.slice(0, MAX_STORED_OTHER_FILES),
+    otherFileCount: result.otherFiles.length,
     totals: result.totals,
     languages: result.languages,
     directories: result.directories.slice(0, MAX_STORED_DIRECTORIES),

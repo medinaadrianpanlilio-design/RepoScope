@@ -4,6 +4,7 @@ export type RunRecord = {
   error_message: string | null;
   created_at: string;
   started_at: string | null;
+  analysis_version?: string | null;
 };
 
 export type ClaimDeps = {
@@ -13,6 +14,9 @@ export type ClaimDeps = {
   /** Resets the run only if nobody changed it first. Returns whether this caller won. */
   restart: (run: RunRecord) => Promise<boolean>;
 };
+
+/** Raise this when results gain new data, so older analyses can be refreshed. */
+export const ANALYSIS_VERSION = "2";
 
 /** Vercel stops a function at 300 seconds, so a run still going after this was killed. */
 const STALE_AFTER_MS = 6 * 60 * 1000;
@@ -40,7 +44,8 @@ export async function claimRun(deps: ClaimDeps, now = new Date()) {
   if (created) return { run: created, start: true };
 
   const run = await deps.find();
-  if (run.status !== "failed" && !isStale(run, now)) return { run, start: false };
+  const outdated = run.status === "completed" && run.analysis_version !== ANALYSIS_VERSION;
+  if (run.status !== "failed" && !isStale(run, now) && !outdated) return { run, start: false };
 
   return { run, start: await deps.restart(run) };
 }

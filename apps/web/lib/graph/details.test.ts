@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleContaining, fileConnections, githubFileUrl } from "./details";
+import { cycleContaining, fileConnections, githubFileUrl, reach, unresolvedIn } from "./details";
 import type { GraphData, GraphFile } from "./types";
 
 const file = (id: number, path: string): GraphFile => ({
@@ -70,5 +70,49 @@ describe("githubFileUrl", () => {
     expect(githubFileUrl("https://github.com/o/r", "abc", "app/[id]/a b.ts")).toBe(
       "https://github.com/o/r/blob/abc/app/%5Bid%5D/a%20b.ts",
     );
+  });
+});
+
+describe("reach", () => {
+  const edge = (source: number, target: number) => ({ source, target, type: "static" as const });
+  const graph = (...edges: ReturnType<typeof edge>[]): GraphData => ({ files: [], edges });
+
+  it("follows a chain and measures its depth", () => {
+    const chain = graph(edge(1, 2), edge(2, 3), edge(3, 4));
+
+    expect(reach(chain, 1, "imports")).toEqual({ count: 3, depth: 3 });
+    expect(reach(chain, 4, "importedBy")).toEqual({ count: 3, depth: 3 });
+  });
+
+  it("reports nothing for a file with no connections that way", () => {
+    expect(reach(graph(edge(1, 2)), 2, "imports")).toEqual({ count: 0, depth: 0 });
+  });
+
+  it("counts a shared dependency once and uses the shortest route", () => {
+    const diamond = graph(edge(1, 2), edge(1, 3), edge(2, 4), edge(3, 4), edge(1, 4));
+
+    expect(reach(diamond, 1, "imports")).toEqual({ count: 3, depth: 1 });
+  });
+
+  it("stops at a cycle and doesn't count the starting file", () => {
+    const loop = graph(edge(1, 2), edge(2, 3), edge(3, 1));
+
+    expect(reach(loop, 1, "imports")).toEqual({ count: 2, depth: 2 });
+  });
+
+  it("ignores a file importing itself", () => {
+    expect(reach(graph(edge(1, 1)), 1, "imports")).toEqual({ count: 0, depth: 0 });
+  });
+});
+
+describe("unresolvedIn", () => {
+  it("lists one file's unresolved imports by line", () => {
+    const unresolved = [
+      { fileId: 1, specifier: "./b", line: 9 },
+      { fileId: 2, specifier: "./x", line: 1 },
+      { fileId: 1, specifier: "./a", line: 2 },
+    ];
+
+    expect(unresolvedIn(unresolved, 1).map((u) => u.specifier)).toEqual(["./a", "./b"]);
   });
 });

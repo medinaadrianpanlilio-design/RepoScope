@@ -1,24 +1,26 @@
 import type { GraphFile } from "./types";
 
-export type TreeFolder = {
+type HasPath = { path: string };
+
+export type TreeFolder<T extends HasPath = GraphFile> = {
   name: string;
   path: string;
-  folders: TreeFolder[];
-  files: GraphFile[];
+  folders: TreeFolder<T>[];
+  files: T[];
   fileCount: number;
 };
 
-export function buildTree(files: GraphFile[]): TreeFolder {
-  const root: TreeFolder = { name: "", path: "", folders: [], files: [], fileCount: 0 };
-  const folders = new Map<string, TreeFolder>([["", root]]);
+export function buildTree<T extends HasPath>(files: T[]): TreeFolder<T> {
+  const root: TreeFolder<T> = { name: "", path: "", folders: [], files: [], fileCount: 0 };
+  const folders = new Map<string, TreeFolder<T>>([["", root]]);
 
-  function folderAt(path: string): TreeFolder {
+  function folderAt(path: string): TreeFolder<T> {
     const existing = folders.get(path);
     if (existing) return existing;
 
     const slash = path.lastIndexOf("/");
     const parent = folderAt(slash === -1 ? "" : path.slice(0, slash));
-    const folder: TreeFolder = {
+    const folder: TreeFolder<T> = {
       name: path.slice(slash + 1),
       path,
       folders: [],
@@ -35,7 +37,7 @@ export function buildTree(files: GraphFile[]): TreeFolder {
     folderAt(slash === -1 ? "" : file.path.slice(0, slash)).files.push(file);
   }
 
-  function finish(folder: TreeFolder): number {
+  function finish(folder: TreeFolder<T>): number {
     folder.folders.sort((a, b) => a.name.localeCompare(b.name));
     folder.files.sort((a, b) => a.path.localeCompare(b.path));
     folder.fileCount =
@@ -53,7 +55,7 @@ export function extensionOf(path: string): string {
   return dot === -1 ? "" : name.slice(dot);
 }
 
-export function extensionsOf(files: GraphFile[]) {
+export function extensionsOf(files: HasPath[]) {
   const counts = new Map<string, number>();
   for (const { path } of files) {
     const extension = extensionOf(path);
@@ -64,11 +66,11 @@ export function extensionsOf(files: GraphFile[]) {
     .sort((a, b) => b.count - a.count || a.extension.localeCompare(b.extension));
 }
 
-export function searchFiles(files: GraphFile[], query: string, limit = 200): GraphFile[] {
+export function searchFiles<T extends HasPath>(files: T[], query: string, limit = 200): T[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [];
 
-  const nameMatches = (file: GraphFile) =>
+  const nameMatches = (file: T) =>
     file.path.slice(file.path.lastIndexOf("/") + 1).toLowerCase().includes(needle);
 
   return files

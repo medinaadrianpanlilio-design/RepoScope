@@ -90,6 +90,8 @@ export type AnalysisResult = {
   unresolved: UnresolvedImport[];
   unanalyzable: (UnanalyzableImport & { source: string })[];
   externalPackages: string[];
+  /** Every other file in the repository, such as styles, images and oversized modules. */
+  otherFiles: string[];
   /** Groups of files joined by a runtime import cycle. Type-only imports are left out. */
   cycles: string[][];
   languages: LanguageStat[];

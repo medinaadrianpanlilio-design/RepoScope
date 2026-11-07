@@ -1,4 +1,4 @@
-import type { GraphData, GraphFile, RelationshipType } from "./types";
+import type { GraphData, GraphFile, RelationshipType, UnresolvedImport } from "./types";
 
 export type Connection = { file: GraphFile; types: RelationshipType[] };
 
@@ -39,4 +39,40 @@ export function cycleContaining(cycles: string[][], path: string): string[] | nu
 export function githubFileUrl(repositoryUrl: string, commitSha: string, path: string): string {
   const encoded = path.split("/").map(encodeURIComponent).join("/");
   return `${repositoryUrl}/blob/${commitSha}/${encoded}`;
+}
+
+/**
+ * Follows imports outward from a file. Count is every other file reached, and depth is
+ * how many steps away the farthest one is, taking the shortest route to each.
+ */
+export function reach(data: GraphData, fileId: number, direction: "imports" | "importedBy") {
+  const neighbors = new Map<number, number[]>();
+  for (const { source, target } of data.edges) {
+    const [from, to] = direction === "imports" ? [source, target] : [target, source];
+    const list = neighbors.get(from);
+    if (list) list.push(to);
+    else neighbors.set(from, [to]);
+  }
+
+  const seen = new Set([fileId]);
+  let frontier = [fileId];
+  let depth = 0;
+
+  while (true) {
+    const next: number[] = [];
+    for (const id of frontier) {
+      for (const neighbor of neighbors.get(id) ?? []) {
+        if (seen.has(neighbor)) continue;
+        seen.add(neighbor);
+        next.push(neighbor);
+      }
+    }
+    if (next.length === 0) return { count: seen.size - 1, depth };
+    frontier = next;
+    depth++;
+  }
+}
+
+export function unresolvedIn(unresolved: UnresolvedImport[], fileId: number) {
+  return unresolved.filter((item) => item.fileId === fileId).sort((a, b) => a.line - b.line);
 }

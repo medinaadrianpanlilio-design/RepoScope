@@ -62,6 +62,22 @@ describe("runPipeline", () => {
     expect(JSON.stringify(vi.mocked(d.complete).mock.calls)).toContain('"sourceFiles":2');
   });
 
+  it("records non-code files and the analysis version", async () => {
+    const { d } = deps({
+      download: vi.fn(async () => ({
+        ok: true as const,
+        bytes: tarGz({ "a.ts": "export {};\n", "logo.svg": "<svg/>" }),
+      })),
+    });
+    await runPipeline(d);
+
+    expect(vi.mocked(d.complete).mock.calls[0]?.[0]).toMatchObject({
+      version: "2",
+      otherFiles: ["logo.svg"],
+      otherFileCount: 1,
+    });
+  });
+
   it("only completes after saving finishes", async () => {
     const order: string[] = [];
     const { d } = deps({

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { claimRun, displayStatus, isStale, type ClaimDeps, type RunRecord } from "./claim";
+import {
+  ANALYSIS_VERSION,
+  claimRun,
+  displayStatus,
+  isStale,
+  type ClaimDeps,
+  type RunRecord,
+} from "./claim";
 
 const now = new Date("2026-11-07T12:00:00Z");
 const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
@@ -11,6 +18,7 @@ function run(overrides: Partial<RunRecord> = {}): RunRecord {
     error_message: null,
     created_at: minutesAgo(1),
     started_at: minutesAgo(1),
+    analysis_version: ANALYSIS_VERSION,
     ...overrides,
   };
 }
@@ -37,6 +45,14 @@ describe("claimRun", () => {
 
     expect(await claimRun(d, now)).toMatchObject({ start: false });
     expect(d.restart).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a completed analysis made by an older version", async () => {
+    const old = run({ status: "completed", analysis_version: null });
+    const d = deps({ find: vi.fn(async () => old) });
+
+    expect(await claimRun(d, now)).toMatchObject({ start: true });
+    expect(d.restart).toHaveBeenCalledWith(old);
   });
 
   it("joins a run already in progress instead of starting a second one", async () => {

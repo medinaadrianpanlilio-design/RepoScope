@@ -57,6 +57,10 @@ describe("analyzeFileSet", () => {
     expect(result.edges.map((e) => e.target)).not.toContain("src/style.css");
   });
 
+  it("lists every file it didn't analyze", () => {
+    expect(result.otherFiles).toEqual(["README.md", "package.json", "src/style.css", "tsconfig.json"]);
+  });
+
   it("lists external packages", () => {
     expect(result.externalPackages).toEqual(["react"]);
   });

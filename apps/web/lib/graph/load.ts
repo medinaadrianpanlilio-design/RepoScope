@@ -1,6 +1,12 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { GraphData, GraphEdge, GraphFile, RelationshipType } from "./types";
+import type {
+  GraphData,
+  GraphEdge,
+  GraphFile,
+  RelationshipType,
+  UnresolvedImport,
+} from "./types";
 
 const PAGE_SIZE = 1000;
 
@@ -14,9 +20,12 @@ type FileRow = {
 };
 
 type EdgeRow = { source_file_id: number; target_file_id: number; relationship_type: string };
+type UnresolvedRow = { source_file_id: number; import_specifier: string; line_number: number };
 
 /** Reads as the visitor, so Row Level Security decides what they can see. */
-export async function loadGraph(analysisId: string): Promise<GraphData> {
+export async function loadGraph(
+  analysisId: string,
+): Promise<GraphData & { unresolved: UnresolvedImport[] }> {
   const supabase = await createClient();
 
   async function readAll<T>(table: string, columns: string): Promise<T[]> {
@@ -35,15 +44,26 @@ export async function loadGraph(analysisId: string): Promise<GraphData> {
     }
   }
 
-  const [fileRows, edgeRows] = await Promise.all([
+  const [fileRows, edgeRows, unresolvedRows] = await Promise.all([
     readAll<FileRow>(
       "repository_files",
       "id, file_path, language, line_count, incoming_count, outgoing_count",
     ),
     readAll<EdgeRow>("dependency_edges", "source_file_id, target_file_id, relationship_type"),
+    readAll<UnresolvedRow>(
+      "unresolved_imports",
+      "source_file_id, import_specifier, line_number",
+    ),
   ]);
 
-  return toGraphData(fileRows, edgeRows);
+  return {
+    ...toGraphData(fileRows, edgeRows),
+    unresolved: unresolvedRows.map((row) => ({
+      fileId: row.source_file_id,
+      specifier: row.import_specifier,
+      line: row.line_number,
+    })),
+  };
 }
 
 export function toGraphData(fileRows: FileRow[], edgeRows: EdgeRow[]): GraphData {

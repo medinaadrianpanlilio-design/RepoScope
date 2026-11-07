@@ -5,8 +5,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 ## In one line
 
 Phases 1 and 2 are done and live at https://repo-scope-delta.vercel.app: paste a repo link and watch
-it get analyzed, with real stats on its overview page. Phase 3 is in progress: the interactive graph,
-file panel and explorer work, and the dependency inspector is next.
+it get analyzed, with real stats on its overview page. Phase 3 is nearly done: the interactive graph,
+file panel, explorer and dependency inspector work.
 
 ## Done
 
@@ -38,10 +38,10 @@ file panel and explorer work, and the dependency inspector is next.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 124 engine tests and 173 web tests pass, and the production build passes. On
+Last results: 125 engine tests and 182 web tests pass, and the production build passes. On
 microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
-**Phase 3: Visualization (tickets 01-08)**
+**Phase 3: Visualization (tickets 01-09)**
 
 - 01-04 Graph data API, React Flow and ELK canvas, node and edge styles, search, highlighting and
   filters
@@ -50,14 +50,16 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
   stored.
 - 07 File panel: details, cycle warning, clickable imports and importers, and the source.
 - 08 Explorer page: file tree, search, extension filter, source, connections and exports, with links
-  to and from the graph.
+  to and from the graph. Non-code files are listed and open on GitHub.
+- 09 Dependency inspector, shared by the graph panel and explorer: direct and indirect reach, depth,
+  cycle warnings and unresolved imports.
 
 ## Next
 
 Phase 3 tickets, in order:
 
-1. 09 Add the dependency inspector
-2. 10 Check responsive and keyboard use
+1. 10 Check responsive and keyboard use
+2. 05 Measure smoothness near the 2,000-file limit
 
 The full plan and build order are in `docs/spec.md`.
 
@@ -86,6 +88,8 @@ The full plan and build order are in `docs/spec.md`.
   to create junction point" needs that package added to `transpilePackages`.
 - Install packages with `npm install <name> --prefix apps/web`, then check it landed there.
 - Keep `typescript` on `^6`. See `docs/adr/0003`.
+- Raise `ANALYSIS_VERSION` in `apps/web/lib/analysis/claim.ts` when results gain new data. Check for
+  new commits then refreshes older analyses.
 - `npm run setup` installs both `apps/web` and `packages/engine`. If npm fails with `EALLOWSCRIPTS`,
   the cause is an `allow-scripts` line in the user-level `~/.npmrc`; set `NPM_CONFIG_USERCONFIG` to an
   empty file for that command. On a fresh checkout, run `npx next typegen` in `apps/web` before

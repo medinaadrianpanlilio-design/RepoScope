@@ -87,6 +87,7 @@ export function analyzeFileSet(fileSet: FileSet): AnalysisResult {
     unresolved,
     unanalyzable,
     externalPackages: [...externalPackages].sort(),
+    otherFiles: [...fileSet.allPaths].filter((path) => !files.has(path)).sort(),
     cycles: findCycles(files.keys(), runtimeNeighbors),
     languages: languageStats(fileList),
     directories: directoryStats(fileSet.allPaths),

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   RELATIONSHIP_TYPES,
   type GraphData,
+  type GraphPayload,
   type RelationshipType,
   type ViewNode,
 } from "@/lib/graph/types";
@@ -41,7 +42,6 @@ type Source = {
   commitSha: string;
   initialFileId: number | null;
 };
-type GraphPayload = GraphData & { cycles: string[][] };
 
 export function GraphExplorer(source: Source) {
   return (
@@ -459,7 +459,6 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           repositoryId={source.repositoryId}
           analysisId={source.analysisId}
           data={data}
-          cycles={data.cycles}
           file={selectedFile}
           repositoryUrl={source.repositoryUrl}
           commitSha={source.commitSha}

@@ -6,7 +6,8 @@ import type { RunRecord } from "./claim";
 import type { AnalysisStats, RunStatus } from "./pipeline";
 
 const CHUNK_SIZE = 500;
-const RUN_COLUMNS = "id, status, error_message, created_at, started_at";
+const RUN_COLUMNS =
+  "id, status, error_message, created_at, started_at, analysis_version:stats->>version";
 
 export function runStore(repositoryId: string, commitSha: string) {
   const db = createAdminClient();

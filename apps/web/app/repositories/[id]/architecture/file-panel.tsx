@@ -1,19 +1,15 @@
 "use client";
 
-import { ExternalLink, FolderTree, TriangleAlert, X } from "lucide-react";
+import { ExternalLink, FolderTree, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
-import { cycleContaining, fileConnections, githubFileUrl } from "@/lib/graph/details";
-import type { GraphData, GraphFile } from "@/lib/graph/types";
-import { ConnectionList, SourceView, useFileSource } from "../file-views";
-
-const MAX_CYCLE_FILES_SHOWN = 12;
+import { githubFileUrl } from "@/lib/graph/details";
+import type { GraphFile, GraphPayload } from "@/lib/graph/types";
+import { DependencyInspector, SourceView, useFileSource } from "../file-views";
 
 type Props = {
   repositoryId: string;
   analysisId: string;
-  data: GraphData;
-  cycles: string[][];
+  data: GraphPayload;
   file: GraphFile;
   repositoryUrl: string;
   commitSha: string;
@@ -27,7 +23,6 @@ export function FilePanel({
   repositoryId,
   analysisId,
   data,
-  cycles,
   file,
   repositoryUrl,
   commitSha,
@@ -36,9 +31,6 @@ export function FilePanel({
   onOpenFile,
   onClose,
 }: Props) {
-  const connections = useMemo(() => fileConnections(data, file.id), [data, file.id]);
-  const cycle = cycleContaining(cycles, file.path);
-  const byPath = useMemo(() => new Map(data.files.map((f) => [f.path, f])), [data.files]);
 
   return (
     <aside
@@ -58,10 +50,9 @@ export function FilePanel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <dl className="grid grid-cols-3 gap-px border-b border-line bg-line text-xs">
+        <dl className="grid grid-cols-2 gap-px border-b border-line bg-line text-xs">
           <Fact label="Language" value={file.language} />
           <Fact label="Lines" value={file.lines.toLocaleString("en-US")} />
-          <Fact label="Connections" value={String(connections.imports.length + connections.importedBy.length)} />
         </dl>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2 text-xs">
@@ -89,65 +80,7 @@ export function FilePanel({
           </a>
         </div>
 
-        {cycle && (
-          <section className="border-b border-line p-3 text-xs">
-            <h3 className="flex items-center gap-1.5 font-medium">
-              <TriangleAlert size={14} className="text-accent-2" aria-hidden />
-              Part of an import cycle
-            </h3>
-            <p className="mt-1 text-muted">
-              {cycle.length === 1
-                ? "This file imports itself."
-                : `This file and ${cycle.length - 1} others can reach each other through imports.`}{" "}
-              That isn&apos;t necessarily a bug, but it can make code harder to change.
-            </p>
-            {cycle.length > 1 && (
-              <ul className="mt-2 space-y-0.5">
-                {cycle
-                  .filter((path) => path !== file.path)
-                  .slice(0, MAX_CYCLE_FILES_SHOWN)
-                  .map((path) => {
-                    const target = byPath.get(path);
-                    return (
-                      <li key={path}>
-                        {target ? (
-                          <button
-                            type="button"
-                            onClick={() => onOpenFile(target)}
-                            className="block w-full truncate text-left font-mono hover:text-accent"
-                          >
-                            {path}
-                          </button>
-                        ) : (
-                          <span className="font-mono text-muted">{path}</span>
-                        )}
-                      </li>
-                    );
-                  })}
-                {cycle.length - 1 > MAX_CYCLE_FILES_SHOWN && (
-                  <li className="text-muted">
-                    and {cycle.length - 1 - MAX_CYCLE_FILES_SHOWN} more
-                  </li>
-                )}
-              </ul>
-            )}
-          </section>
-        )}
-
-        <ConnectionList
-          title="Imports"
-          empty="This file doesn't import other files in the repository."
-          connections={connections.imports}
-          color="text-accent"
-          onOpenFile={onOpenFile}
-        />
-        <ConnectionList
-          title="Imported by"
-          empty="No other file in the repository imports this one."
-          connections={connections.importedBy}
-          color="text-accent-2"
-          onOpenFile={onOpenFile}
-        />
+        <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
 
         <section>
           <h3 className="border-b border-line px-3 py-2 text-xs font-medium">Source</h3>

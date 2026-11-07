@@ -54,6 +54,16 @@ describe("buildTree", () => {
   });
 });
 
+describe("non-code entries", () => {
+  it("builds a tree from anything with a path", () => {
+    const tree = buildTree([{ path: "assets/logo.svg" }, { path: "README.md" }]);
+
+    expect(tree.files.map((f) => f.path)).toEqual(["README.md"]);
+    expect(tree.folders[0]?.files.map((f) => f.path)).toEqual(["assets/logo.svg"]);
+    expect(tree.fileCount).toBe(2);
+  });
+});
+
 describe("extensions", () => {
   it("reads the last extension", () => {
     expect(extensionOf("a/b.tsx")).toBe(".tsx");

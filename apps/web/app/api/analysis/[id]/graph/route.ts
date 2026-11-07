@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiData, apiError } from "@/lib/api";
+import type { AnalysisStats } from "@/lib/analysis/pipeline";
 import { getRun } from "@/lib/analysis/store";
 import { loadGraph } from "@/lib/graph/load";
 
@@ -14,8 +15,13 @@ export async function GET(_request: NextRequest, ctx: RouteContext<"/api/analysi
     return apiError("not_ready", "This analysis hasn't finished.", 409);
   }
 
-  const cycles = (run.stats as { cycles?: string[][] } | null)?.cycles ?? [];
-  return apiData({ ...(await loadGraph(id)), cycles });
+  const stats = run.stats as Partial<AnalysisStats> | null;
+  return apiData({
+    ...(await loadGraph(id)),
+    cycles: stats?.cycles ?? [],
+    otherFiles: stats?.otherFiles ?? null,
+    otherFileCount: stats?.otherFileCount ?? 0,
+  });
 }
 
 function notFound() {

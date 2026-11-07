@@ -1,13 +1,25 @@
 "use client";
 
-import { ChevronDown, ChevronRight, ExternalLink, FileCode, Folder, Share2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  File,
+  FileCode,
+  Folder,
+  Share2,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { fileConnections, githubFileUrl } from "@/lib/graph/details";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { githubFileUrl } from "@/lib/graph/details";
 import { buildTree, extensionOf, extensionsOf, searchFiles, type TreeFolder } from "@/lib/graph/tree";
-import type { GraphData, GraphFile } from "@/lib/graph/types";
+import type { GraphFile, GraphPayload } from "@/lib/graph/types";
 import { foldersOf } from "@/lib/graph/view";
-import { ConnectionList, SourceView, useFileSource } from "../file-views";
+import { DependencyInspector, SourceView, useFileSource } from "../file-views";
+
+/** A file RepoScope didn't analyze, such as a stylesheet or image. It opens on GitHub. */
+type OtherEntry = { id: null; path: string };
+type Entry = GraphFile | OtherEntry;
 
 type Props = {
   repositoryId: string;
@@ -19,7 +31,7 @@ type Props = {
 
 export function FileExplorer(props: Props) {
   const { analysisId } = props;
-  const [data, setData] = useState<GraphData | null>(null);
+  const [data, setData] = useState<GraphPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +72,7 @@ function Workspace({
   repositoryUrl,
   commitSha,
   initialFileId,
-}: Props & { data: GraphData }) {
+}: Props & { data: GraphPayload }) {
   const [selected, setSelected] = useState<GraphFile | null>(
     () => data.files.find((file) => file.id === initialFileId) ?? null,
   );
@@ -68,13 +80,55 @@ function Workspace({
   const [query, setQuery] = useState("");
   const [extension, setExtension] = useState("");
 
-  const extensions = useMemo(() => extensionsOf(data.files), [data.files]);
-  const visibleFiles = useMemo(
-    () => (extension ? data.files.filter((f) => extensionOf(f.path) === extension) : data.files),
-    [data.files, extension],
+  const entries = useMemo<Entry[]>(
+    () => [...data.files, ...(data.otherFiles ?? []).map((path) => ({ id: null, path }))],
+    [data.files, data.otherFiles],
   );
-  const tree = useMemo(() => buildTree(visibleFiles), [visibleFiles]);
-  const matches = useMemo(() => searchFiles(visibleFiles, query), [visibleFiles, query]);
+  const extensions = useMemo(() => extensionsOf(entries), [entries]);
+  const visibleEntries = useMemo(
+    () => (extension ? entries.filter((e) => extensionOf(e.path) === extension) : entries),
+    [entries, extension],
+  );
+  const tree = useMemo(() => buildTree(visibleEntries), [visibleEntries]);
+  const matches = useMemo(() => searchFiles(visibleEntries, query), [visibleEntries, query]);
+  const selectedIsFiltered = selected && extension && extensionOf(selected.path) !== extension;
+  const hiddenOtherFiles = data.otherFileCount - (data.otherFiles?.length ?? 0);
+
+  function renderEntry(entry: Entry, label: string, indent?: { paddingLeft: string }): ReactNode {
+    if (entry.id === null) {
+      return (
+        <a
+          href={githubFileUrl(repositoryUrl, commitSha, entry.path)}
+          target="_blank"
+          rel="noreferrer noopener"
+          title={`${entry.path}: not analyzed, opens on GitHub`}
+          style={indent}
+          className={`${rowClass(false)} text-muted`}
+        >
+          {indent && <span className="w-3 shrink-0" aria-hidden />}
+          {indent && <File size={13} className="shrink-0" aria-hidden />}
+          <span className="min-w-0 flex-1 truncate font-mono">{label}</span>
+          <ExternalLink size={10} className="shrink-0" aria-hidden />
+        </a>
+      );
+    }
+
+    const active = selected?.id === entry.id;
+    return (
+      <button
+        type="button"
+        onClick={() => openFile(entry)}
+        aria-current={active ? "true" : undefined}
+        title={entry.path}
+        style={indent}
+        className={rowClass(active)}
+      >
+        {indent && <span className="w-3 shrink-0" aria-hidden />}
+        {indent && <FileCode size={13} className="shrink-0 text-muted" aria-hidden />}
+        <span className="min-w-0 flex-1 truncate font-mono">{label}</span>
+      </button>
+    );
+  }
 
   function openFile(file: GraphFile) {
     setSelected(file);
@@ -106,7 +160,7 @@ function Workspace({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={`Search ${visibleFiles.length.toLocaleString("en-US")} files`}
+                placeholder={`Search ${visibleEntries.length.toLocaleString("en-US")} files`}
                 className="field"
               />
             </label>
@@ -127,24 +181,27 @@ function Workspace({
             </label>
           </div>
 
+          {selectedIsFiltered && (
+            <p role="status" className="border-b border-line p-2 text-xs text-muted">
+              The open file is hidden by this filter.{" "}
+              <button
+                type="button"
+                onClick={() => setExtension("")}
+                className="text-accent hover:underline"
+              >
+                Show all files
+              </button>
+            </p>
+          )}
+
           <div className="min-h-0 flex-1 overflow-auto p-1 text-xs">
             {query.trim() ? (
               matches.length === 0 ? (
                 <p className="p-2 text-muted">No matching files.</p>
               ) : (
                 <ul>
-                  {matches.map((file) => (
-                    <li key={file.id}>
-                      <button
-                        type="button"
-                        onClick={() => openFile(file)}
-                        aria-current={selected?.id === file.id ? "true" : undefined}
-                        title={file.path}
-                        className={rowClass(selected?.id === file.id)}
-                      >
-                        <span className="truncate font-mono">{file.path}</span>
-                      </button>
-                    </li>
+                  {matches.map((entry) => (
+                    <li key={entry.path}>{renderEntry(entry, entry.path)}</li>
                   ))}
                 </ul>
               )
@@ -153,12 +210,22 @@ function Workspace({
                 folder={tree}
                 depth={0}
                 open={open}
-                selectedId={selected?.id ?? null}
                 onToggle={toggleFolder}
-                onOpenFile={openFile}
+                renderEntry={renderEntry}
               />
             )}
           </div>
+
+          {data.otherFiles === null && (
+            <p className="border-t border-line p-2 text-xs text-muted">
+              Only analyzed files are listed. Use Check for new commits on the overview to add the rest.
+            </p>
+          )}
+          {hiddenOtherFiles > 0 && (
+            <p className="border-t border-line p-2 text-xs text-muted">
+              {hiddenOtherFiles.toLocaleString("en-US")} more non-code files aren&apos;t listed.
+            </p>
+          )}
         </nav>
 
         {selected ? (
@@ -186,16 +253,14 @@ function TreeLevel({
   folder,
   depth,
   open,
-  selectedId,
   onToggle,
-  onOpenFile,
+  renderEntry,
 }: {
-  folder: TreeFolder;
+  folder: TreeFolder<Entry>;
   depth: number;
   open: Set<string>;
-  selectedId: number | null;
   onToggle: (path: string) => void;
-  onOpenFile: (file: GraphFile) => void;
+  renderEntry: (entry: Entry, label: string, indent: { paddingLeft: string }) => ReactNode;
 }) {
   const indent = { paddingLeft: `${depth * 12 + 6}px` };
 
@@ -226,30 +291,16 @@ function TreeLevel({
                 folder={child}
                 depth={depth + 1}
                 open={open}
-                selectedId={selectedId}
                 onToggle={onToggle}
-                onOpenFile={onOpenFile}
+                renderEntry={renderEntry}
               />
             )}
           </li>
         );
       })}
-      {folder.files.map((file) => (
-        <li key={file.id}>
-          <button
-            type="button"
-            onClick={() => onOpenFile(file)}
-            aria-current={selectedId === file.id ? "true" : undefined}
-            title={file.path}
-            style={indent}
-            className={rowClass(selectedId === file.id)}
-          >
-            <span className="w-3 shrink-0" aria-hidden />
-            <FileCode size={13} className="shrink-0 text-muted" aria-hidden />
-            <span className="min-w-0 flex-1 truncate font-mono">
-              {file.path.slice(file.path.lastIndexOf("/") + 1)}
-            </span>
-          </button>
+      {folder.files.map((entry) => (
+        <li key={entry.path}>
+          {renderEntry(entry, entry.path.slice(entry.path.lastIndexOf("/") + 1), indent)}
         </li>
       ))}
     </ul>
@@ -265,7 +316,7 @@ function FileView({
   commitSha,
   onOpenFile,
 }: {
-  data: GraphData;
+  data: GraphPayload;
   file: GraphFile;
   repositoryId: string;
   analysisId: string;
@@ -274,7 +325,6 @@ function FileView({
   onOpenFile: (file: GraphFile) => void;
 }) {
   const state = useFileSource(analysisId, file.id);
-  const connections = useMemo(() => fileConnections(data, file.id), [data, file.id]);
   const exported = state.source?.exports ?? [];
 
   return (
@@ -311,20 +361,7 @@ function FileView({
         aria-label="File connections"
         className="min-h-0 overflow-y-auto border-t border-line bg-sidebar lg:border-t-0 lg:border-l"
       >
-        <ConnectionList
-          title="Imports"
-          empty="This file doesn't import other files in the repository."
-          connections={connections.imports}
-          color="text-accent"
-          onOpenFile={onOpenFile}
-        />
-        <ConnectionList
-          title="Imported by"
-          empty="No other file in the repository imports this one."
-          connections={connections.importedBy}
-          color="text-accent-2"
-          onOpenFile={onOpenFile}
-        />
+        <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
         <section className="p-3 text-xs">
           <h3 className="font-medium">Exports {state.source && `(${exported.length})`}</h3>
           {state.source && exported.length === 0 && (
