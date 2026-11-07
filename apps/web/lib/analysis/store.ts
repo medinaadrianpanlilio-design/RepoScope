@@ -181,3 +181,16 @@ export async function getLatestCompletedRun(repositoryId: string) {
   if (error) throw new Error(`Could not load results: ${error.code}`);
   return data;
 }
+
+/** Reads as the visitor. A file only matches inside its own analysis. */
+export async function getFile(analysisId: string, fileId: number) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("repository_files")
+    .select("file_path, language, line_count")
+    .eq("analysis_id", analysisId)
+    .eq("id", fileId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load file: ${error.code}`);
+  return data;
+}

@@ -83,3 +83,24 @@ body {
 .graph-handle {
   visibility: hidden;
 }
+
+.source-view pre {
+  overflow-x: auto;
+  padding: 0.75rem 0;
+  background: transparent !important;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  counter-reset: line;
+}
+
+.source-view .line::before {
+  display: inline-block;
+  width: 3.5rem;
+  padding-right: 1rem;
+  color: var(--color-muted);
+  text-align: right;
+  user-select: none;
+  content: counter(line);
+  counter-increment: line;
+}

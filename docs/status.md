@@ -38,24 +38,25 @@ works, and the file panel and explorer are next.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 124 engine tests and 135 web tests pass, and the production build passes. On
+Last results: 124 engine tests and 154 web tests pass, and the production build passes. On
 microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
-**Phase 3: Visualization (tickets 01-05)**
+**Phase 3: Visualization (tickets 01-06)**
 
 - 01-04 Graph data API, React Flow and ELK canvas, node and edge styles, search, highlighting and
   filters
 - 05 Folder grouping above 200 files. Smoothness near the 2,000-file limit isn't measured yet.
+- 06 Source on demand at `GET /api/analysis/[id]/files/[fileId]`, highlighted with Shiki. Nothing is
+  stored. The interface for it comes in ticket 07.
 
 ## Next
 
 Phase 3 tickets, in order:
 
-1. 06 Fetch source on demand
-2. 07 Build the file panel
-3. 08 Build the explorer page
-4. 09 Add the dependency inspector
-5. 10 Check responsive and keyboard use
+1. 07 Build the file panel
+2. 08 Build the explorer page
+3. 09 Add the dependency inspector
+4. 10 Check responsive and keyboard use
 
 The full plan and build order are in `docs/spec.md`.
 
@@ -80,7 +81,9 @@ The full plan and build order are in `docs/spec.md`.
 
 - Tickets and specs are in `.scratch/`, starting at `.scratch/roadmap.md`. That folder is git-ignored,
   so it exists only on this PC. Back it up if the drive matters.
-- The repo is on an exFAT drive with no symlinks. See `docs/adr/0002`.
+- The repo is on an exFAT drive with no symlinks. See `docs/adr/0002`. A build that fails with "failed
+  to create junction point" needs that package added to `transpilePackages`.
+- Install packages with `npm install <name> --prefix apps/web`, then check it landed there.
 - Keep `typescript` on `^6`. See `docs/adr/0003`.
 - `npm run setup` installs both `apps/web` and `packages/engine`. If npm fails with `EALLOWSCRIPTS`,
   the cause is an `allow-scripts` line in the user-level `~/.npmrc`; set `NPM_CONFIG_USERCONFIG` to an
