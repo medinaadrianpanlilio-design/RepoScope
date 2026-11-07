@@ -10,6 +10,7 @@ import { AnalysisPanel } from "./analysis-panel";
 import { RepoTabs } from "../repo-tabs";
 import { AnalysisResults } from "./analysis-results";
 import { InsightsSummary } from "./insights-summary";
+import { RiskPanel } from "./risk-panel";
 
 type Props = PageProps<"/repositories/[id]/overview">;
 
@@ -91,6 +92,8 @@ async function Overview({ params, searchParams }: Pick<Props, "params" | "search
           completedAt={completed.completed_at}
         />
       )}
+
+      {completed && <RiskPanel key={completed.id} repositoryId={repository.id} />}
 
       {completed && (
         <Suspense fallback={<p className="mt-10 text-sm text-muted">Reading the analysis…</p>}>

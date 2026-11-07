@@ -18,6 +18,7 @@ type FileRow = {
   line_count: number;
   incoming_count: number;
   outgoing_count: number;
+  file_size: number;
 };
 
 type EdgeRow = { source_file_id: number; target_file_id: number; relationship_type: string };
@@ -52,7 +53,7 @@ export async function loadGraph(
   const [fileRows, edgeRows, unresolvedRows] = await Promise.all([
     readAll<FileRow>(
       "repository_files",
-      "id, file_path, language, line_count, incoming_count, outgoing_count",
+      "id, file_path, language, line_count, incoming_count, outgoing_count, file_size",
     ),
     readAll<EdgeRow>("dependency_edges", "source_file_id, target_file_id, relationship_type"),
     readAll<UnresolvedRow>(
@@ -79,6 +80,7 @@ export function toGraphData(fileRows: FileRow[], edgeRows: EdgeRow[]): GraphData
     lines: row.line_count,
     incoming: row.incoming_count,
     outgoing: row.outgoing_count,
+    size: row.file_size,
   }));
 
   const seen = new Set<string>();

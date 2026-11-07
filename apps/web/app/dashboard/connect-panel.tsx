@@ -18,8 +18,9 @@ const CLI = "node path\\to\\RepoScope\\packages\\cli\\src\\index.ts";
 
 const AGENT_NOTE = `## RepoScope
 
-This project is indexed by RepoScope. Before editing a file, call its \`get_file_context\` tool,
-and call \`get_impact\` before changing a widely used file. These facts come from static analysis.`;
+This project is indexed by RepoScope. Call its \`get_overview\` tool instead of exploring folders.
+Before editing a file, call \`get_file_context\`. Before a change, call \`get_risks\` with the paths and
+any imports you plan to add. These facts come from static analysis.`;
 
 function usedLabel(key: Key): string {
   return key.last_used_at

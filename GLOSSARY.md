@@ -40,3 +40,6 @@ _Avoid_: backend AI, cloud AI
 **MCP key:** a read-only key a coding agent uses to read the Knowledge vault.
 
 **Sync key:** a key that can only upload analysis results for its owner's Repositories.
+
+**Installation:** the GitHub App installed on one GitHub account, linked to one user. It's how
+RepoScope reaches that account's private Repositories.

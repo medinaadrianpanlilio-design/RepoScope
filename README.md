@@ -7,7 +7,8 @@ interactive architecture graph, and coding agents read the same knowledge throug
 decides the facts; AI only explains them.
 
 > **Status: in development, and live at https://repo-scope-delta.vercel.app.** Public repositories,
-> the graph, local AI, insights, change impact, local folders and MCP are built. See
+> the graph, local AI, insights, change impact, local folders, MCP, Conventions and risk warnings are
+> built. See
 > [status](docs/status.md) and [the spec](docs/spec.md).
 
 ## Run it

@@ -7,8 +7,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
 inspector. Phases 4 and 5 are done too: local AI summaries and chat, insights, and change impact.
-Phase 6 is built and tested: local folders, `reposcope sync` and the MCP server. What's left of it is
-the owner's one-week trial in real coding sessions.
+Phases 6 and 7 are built and tested: local folders, `reposcope sync`, the MCP server, Conventions and
+risk warnings. What's left of Phase 6 is the owner's one-week trial in real coding sessions.
 
 ## Done
 
@@ -86,12 +86,37 @@ passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScr
   look edited.
 - Local folders on the site have no source view, exports list or per-file AI. Insight explanations work.
 
-Last results: 125 engine tests, 31 CLI tests, 296 web tests and 18 browser tests pass.
+**Phase 7: Conventions and risk warnings (all 6 tickets, plus `get_overview`)**
+
+- Import rules and notes are private per user, on the Conventions tab. See `docs/adr/0007`.
+- Broken rules and risk warnings are computed on demand, so there's no table for them and no job to
+  run after an analysis. `packages/engine/src/rules.ts` checks rules, and `lib/graph/risks.ts` holds
+  the warnings.
+- The overview shows what's new since the last analysis. `get_risks` checks a planned change first.
+- `get_overview` replaces exploring a repository at the start of a session. Measured savings are in
+  `docs/adr/0007`.
+- Tested on the real database with two temporary accounts: 63 checks, including breaking a rule on
+  purpose, and privacy between two users sharing a public repository. That testing found a bug from
+  Phase 6, now fixed: with a public record and a synced clone of the same repository, every MCP tool
+  refused the name. A synced clone now wins.
+
+Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests pass.
+
+**Phase 8: GitHub App and webhooks (in progress)**
+
+- 02 The schema is done: `github_installations`, and private GitHub rows with one owner. See
+  `docs/adr/0008`. `e2e/private-access.spec.ts` proves it on the real database, across every table.
+- Writing it found a bug from Phase 6: anyone holding a local folder's id could save it, and MCP would
+  then serve it to them. Fixed in the migration and in `repositoriesOf`.
+
+Last results: 164 engine tests, 31 CLI tests, 343 web tests and 16 database tests pass.
 
 ## Next
 
-1. Ticket 09: use RepoScope for a week in real sessions, at `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
-2. Phase 7: Conventions and risk warnings. Start at `.scratch/phase-7-conventions-risk`.
+1. Ticket 01: the owner registers the GitHub App. Tickets 03, 04 and 05 wait for it. Ticket 06 needs only
+   the schema, but can't be tried on real deliveries until the App exists.
+2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+   `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.
 

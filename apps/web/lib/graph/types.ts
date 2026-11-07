@@ -9,6 +9,8 @@ export type GraphFile = {
   lines: number;
   incoming: number;
   outgoing: number;
+  /** In bytes. Comparing it shows a file changed, as source isn't stored. */
+  size?: number;
 };
 
 /** Source and target are file ids. */

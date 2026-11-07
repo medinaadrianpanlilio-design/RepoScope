@@ -16,6 +16,7 @@ async function findOrCreateRepository(db: Db, userId: string, start: SyncStart):
     .from("repositories")
     .select("id")
     .eq("owner_user_id", userId)
+    .eq("source", "local")
     .ilike("full_name", fullName.replace(/[%_]/g, "\\$&"))
     .maybeSingle();
   if (error) throw new Error(`Could not find folder: ${error.code}`);
