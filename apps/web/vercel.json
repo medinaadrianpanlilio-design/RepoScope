@@ -1,3 +1,4 @@
 {
-  "installCommand": "npm install && npm install --prefix ../../packages/engine --omit=dev"
+  "installCommand": "npm install && npm install --prefix ../../packages/engine --omit=dev",
+  "crons": [{ "path": "/api/cron/daily", "schedule": "0 18 * * *" }]
 }

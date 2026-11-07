@@ -4,8 +4,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phase 1 is built but not deployed. Phase 2 is 11 of 12 tickets done: paste a repo link and watch it get
-analyzed, with real stats on its overview page. The interactive graph comes in Phase 3.
+Phases 1 and 2 are built but not deployed: paste a repo link and watch it get analyzed, with real
+stats on its overview page. Next is Phase 3, the interactive graph.
 
 ## Done
 
@@ -15,7 +15,7 @@ analyzed, with real stats on its overview page. The interactive graph comes in P
 - Public repository import, with clear errors for bad links, missing repos and private repos
 - Supabase schema with Row Level Security
 
-**Phase 2: Analysis engine (tickets 01-11)**
+**Phase 2: Analysis engine (all 12 tickets)**
 
 - 01 Rate limiting on import: 20 per hour per visitor, stored as a hash
 - 02 `packages/engine`, wired into the web app
@@ -34,21 +34,21 @@ analyzed, with real stats on its overview page. The interactive graph comes in P
   the time limit is covered by unit tests only.
 - 11 Live progress screen, real overview stats, dashboard status and failure screens. Tested in a
   real browser.
+- 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
+  real database. The Vercel schedule itself has not run yet.
 
-Last results: 124 engine tests, 103 web tests and 7 browser tests pass, and the production build
+Last results: 124 engine tests, 121 web tests and 7 browser tests pass, and the production build
 passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 ## Next
 
-Remaining Phase 2 tickets, in order:
-
-1. 12 Add the daily maintenance cron
-
-Then Phase 3: the interactive graph. The full plan and build order are in `docs/spec.md`.
+Phase 3: the interactive graph. Start at `.scratch/phase-3-visualization/spec.md`. The full plan and
+build order are in `docs/spec.md`.
 
 ## Needs the owner
 
-1. Deploy on Vercel. See the Deploy section of `README.md`. Deployment has not been tested yet.
+1. Deploy on Vercel. See the Deploy section of `README.md`. Deployment has not been tested yet. Set
+   `CRON_SECRET` there to a long random value, or the daily job refuses to run.
 2. Test a real sign-up and its confirmation email.
 3. Add a `GITHUB_TOKEN` limited to public repositories, read-only. Without one, GitHub allows 60
    requests an hour.
