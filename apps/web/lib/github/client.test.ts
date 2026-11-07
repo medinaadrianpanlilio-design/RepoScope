@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchRepositoryMetadata } from "./client";
+import { fetchLatestCommit, fetchRepositoryMetadata } from "./client";
 
 const repoBody = {
   id: 70107786,
@@ -115,5 +115,34 @@ describe("fetchRepositoryMetadata", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "upstream" });
+  });
+});
+
+describe("fetchLatestCommit", () => {
+  const sha = "a".repeat(40);
+  const text = (status: number, body: string) =>
+    vi.fn<typeof fetch>(async () => new Response(body, { status }));
+
+  it("returns the branch's commit", async () => {
+    const fetchImpl = text(200, sha);
+
+    expect(await fetchLatestCommit("o", "r", "feature/x", { fetchImpl })).toEqual({ ok: true, sha });
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://api.github.com/repos/o/r/commits/feature%2Fx");
+  });
+
+  it("refuses anything that isn't a commit hash", async () => {
+    expect(await fetchLatestCommit("o", "r", "main", { fetchImpl: text(200, "<html>") })).toEqual({
+      ok: false,
+      error: "upstream",
+    });
+  });
+
+  it("reports a missing branch or an empty repository", async () => {
+    for (const status of [404, 422]) {
+      expect(await fetchLatestCommit("o", "r", "main", { fetchImpl: text(status, "") })).toEqual({
+        ok: false,
+        error: "not_found",
+      });
+    }
   });
 });

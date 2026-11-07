@@ -1,11 +1,11 @@
 # Where RepoScope is now
 
-Last updated: 5 November 2026. Read this first when picking the project back up.
+Last updated: 7 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
-Phase 1 is built but not deployed. Phase 2 is 8 of 12 tickets done: the analysis engine works, but it
-isn't connected to the app yet.
+Phase 1 is built but not deployed. Phase 2 is 10 of 12 tickets done: analyses run end to end through
+the API, but the website doesn't show them yet.
 
 ## Done
 
@@ -15,7 +15,7 @@ isn't connected to the app yet.
 - Public repository import, with clear errors for bad links, missing repos and private repos
 - Supabase schema with Row Level Security
 
-**Phase 2: Analysis engine (tickets 01-08)**
+**Phase 2: Analysis engine (tickets 01-10)**
 
 - 01 Rate limiting on import: 20 per hour per visitor, stored as a hash
 - 02 `packages/engine`, wired into the web app
@@ -27,6 +27,11 @@ isn't connected to the app yet.
 - 08 Safe archive download and extraction: `downloadArchive` (web) only follows GitHub's redirect to
   codeload.github.com and caps bytes; `extractTarGz` (engine) works in memory, drops unsafe paths and
   links, and caps unpacked size and entry count. Not yet measured on Vercel or a real repo.
+- 09 Results schema: files, Dependency edges, Unresolved imports and run statistics. No source code
+  columns. Results of private repos are hidden, and only the server can write.
+- 10 Background analysis: `POST /api/repositories/[id]/analyze` and `GET /api/analysis/[id]`. Tested
+  on real repositories, including simultaneous requests. Not yet run on Vercel, and a run killed by
+  the time limit is covered by unit tests only.
 
 Last results: 124 engine tests and 61 web tests pass, and the production build passes. On
 microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
@@ -35,24 +40,21 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 Remaining Phase 2 tickets, in order:
 
-1. 09 Add the results schema
-2. 10 Run analyses in the background
-3. 11 Show real progress and stats
-4. 12 Add the daily maintenance cron
+1. 11 Show real progress and stats
+2. 12 Add the daily maintenance cron
 
 Then Phase 3: the interactive graph. The full plan and build order are in `docs/spec.md`.
 
 ## Needs the owner
 
-1. Put the Supabase secret key in `apps/web/.env.local` after `SUPABASE_SECRET_KEY=`. Never commit it
-   or paste it into a chat. Import can't work without it, so a real import has not been tested yet.
-2. Deploy on Vercel. See the Deploy section of `README.md`. Deployment has not been tested yet.
-3. Test a real sign-up and its confirmation email.
+1. Deploy on Vercel. See the Deploy section of `README.md`. Deployment has not been tested yet.
+2. Test a real sign-up and its confirmation email.
+3. Add a `GITHUB_TOKEN` limited to public repositories, read-only. Without one, GitHub allows 60
+   requests an hour.
 
 ## Open items
 
-- Two harmless test rows are in the `rate_limits` table, with keys starting `test:`. Delete them, or
-  let the Phase 2 cron clean up old rows.
+- Database changes are run by hand in the Supabase SQL editor, in the order of `supabase/migrations/`.
 - Supabase reports "RLS enabled, no policy" for `rate_limits`. That is intentional: only the server
   may reach that table.
 - Decide whether to rewrite the first commit, which has a co-author line, and whether to hide the
@@ -69,5 +71,4 @@ Then Phase 3: the interactive graph. The full plan and build order are in `docs/
   the cause is an `allow-scripts` line in the user-level `~/.npmrc`; set `NPM_CONFIG_USERCONFIG` to an
   empty file for that command. On a fresh checkout, run `npx next typegen` in `apps/web` before
   `typecheck`.
-- `.scratch/` was missing on this checkout, so the tickets for 08-12 were not available.
 - A stopped `next start` can keep running and hold its port. Check the port before trusting a test.
