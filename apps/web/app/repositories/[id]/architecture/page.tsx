@@ -41,7 +41,11 @@ async function Architecture({ params }: Pick<Props, "params">) {
       </div>
 
       {run ? (
-        <GraphExplorer analysisId={run.id} />
+        <GraphExplorer
+          analysisId={run.id}
+          repositoryUrl={repository.github_url}
+          commitSha={run.commit_sha}
+        />
       ) : (
         <div className="m-4 rounded-md border border-dashed border-line p-8">
           <h2 className="font-medium">Nothing to map yet</h2>

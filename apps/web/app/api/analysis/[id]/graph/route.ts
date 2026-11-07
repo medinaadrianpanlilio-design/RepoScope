@@ -14,7 +14,8 @@ export async function GET(_request: NextRequest, ctx: RouteContext<"/api/analysi
     return apiError("not_ready", "This analysis hasn't finished.", 409);
   }
 
-  return apiData(await loadGraph(id));
+  const cycles = (run.stats as { cycles?: string[][] } | null)?.cycles ?? [];
+  return apiData({ ...(await loadGraph(id)), cycles });
 }
 
 function notFound() {

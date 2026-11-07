@@ -11,7 +11,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   RELATIONSHIP_TYPES,
@@ -20,6 +20,7 @@ import {
   type ViewNode,
 } from "@/lib/graph/types";
 import { connectedTo, defaultExpanded, foldersOf, toGraphView } from "@/lib/graph/view";
+import { FilePanel } from "./file-panel";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
 
 type Positions = Record<string, { x: number; y: number }>;
@@ -33,16 +34,20 @@ const EDGE_STYLES: Record<RelationshipType, { label: string; dash?: string; widt
 
 const MAX_SEARCH_RESULTS = 8;
 
-export function GraphExplorer({ analysisId }: { analysisId: string }) {
+type Source = { analysisId: string; repositoryUrl: string; commitSha: string };
+type GraphPayload = GraphData & { cycles: string[][] };
+
+export function GraphExplorer(source: Source) {
   return (
     <ReactFlowProvider>
-      <Explorer analysisId={analysisId} />
+      <Explorer {...source} />
     </ReactFlowProvider>
   );
 }
 
-function Explorer({ analysisId }: { analysisId: string }) {
-  const [data, setData] = useState<GraphData | null>(null);
+function Explorer(source: Source) {
+  const { analysisId } = source;
+  const [data, setData] = useState<GraphPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,10 +71,10 @@ function Explorer({ analysisId }: { analysisId: string }) {
   if (data.files.length === 0) {
     return <Notice title="Nothing to show" body="This analysis found no source files." />;
   }
-  return <Canvas key={analysisId} data={data} />;
+  return <Canvas key={analysisId} data={data} source={source} />;
 }
 
-function Canvas({ data }: { data: GraphData }) {
+function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   const flow = useReactFlow();
   const [expanded, setExpanded] = useState(() => defaultExpanded(data.files));
   const [positions, setPositions] = useState<Positions | null>(null);
@@ -275,6 +280,9 @@ function Canvas({ data }: { data: GraphData }) {
   }
 
   const hasFolders = topFolders.length > 0;
+  const selectedFile = selected
+    ? data.files.find((file) => `file:${file.id}` === selected)
+    : undefined;
 
   return (
     <div className="relative min-h-[520px] flex-1">
@@ -296,7 +304,11 @@ function Canvas({ data }: { data: GraphData }) {
         aria-label="Dependency graph"
       >
         <Background gap={24} color="#1c2230" bgColor="#0b0d12" />
-        <Controls showInteractive={false} position="bottom-right" />
+        <Controls
+          showInteractive={false}
+          position="bottom-right"
+          className={selected ? "sm:!mr-[432px]" : undefined}
+        />
       </ReactFlow>
       </div>
 
@@ -427,25 +439,19 @@ function Canvas({ data }: { data: GraphData }) {
         </details>
       </aside>
 
-      {selected && (
-        <div className="absolute top-16 right-3 flex items-center gap-3 rounded-md border border-line bg-card/95 px-3 py-2 text-xs">
-          <span>
-            <span style={{ color: "#8b7cff" }}>{related?.incoming.size} use this</span>
-            {" · "}
-            <span style={{ color: "#5b9cff" }}>uses {related?.outgoing.size}</span>
-          </span>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={hideUnrelated}
-              onChange={(event) => setHideUnrelated(event.target.checked)}
-            />
-            Hide unrelated
-          </label>
-          <button type="button" onClick={() => setSelected(null)} aria-label="Clear selection">
-            <X size={14} aria-hidden />
-          </button>
-        </div>
+      {selectedFile && (
+        <FilePanel
+          analysisId={source.analysisId}
+          data={data}
+          cycles={data.cycles}
+          file={selectedFile}
+          repositoryUrl={source.repositoryUrl}
+          commitSha={source.commitSha}
+          hideUnrelated={hideUnrelated}
+          onHideUnrelatedChange={setHideUnrelated}
+          onOpenFile={revealFile}
+          onClose={() => setSelected(null)}
+        />
       )}
 
       {!positions && !layoutFailed && (
