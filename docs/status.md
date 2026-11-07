@@ -5,8 +5,8 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 ## In one line
 
 Phases 1 and 2 are done and live at https://repo-scope-delta.vercel.app: paste a repo link and watch
-it get analyzed, with real stats on its overview page. Phase 3 is in progress: the interactive graph
-and file panel work, and the explorer is next.
+it get analyzed, with real stats on its overview page. Phase 3 is in progress: the interactive graph,
+file panel and explorer work, and the dependency inspector is next.
 
 ## Done
 
@@ -38,10 +38,10 @@ and file panel work, and the explorer is next.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 124 engine tests and 161 web tests pass, and the production build passes. On
+Last results: 124 engine tests and 173 web tests pass, and the production build passes. On
 microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
-**Phase 3: Visualization (tickets 01-07)**
+**Phase 3: Visualization (tickets 01-08)**
 
 - 01-04 Graph data API, React Flow and ELK canvas, node and edge styles, search, highlighting and
   filters
@@ -49,14 +49,15 @@ microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 - 06 Source on demand at `GET /api/analysis/[id]/files/[fileId]`, highlighted with Shiki. Nothing is
   stored.
 - 07 File panel: details, cycle warning, clickable imports and importers, and the source.
+- 08 Explorer page: file tree, search, extension filter, source, connections and exports, with links
+  to and from the graph.
 
 ## Next
 
 Phase 3 tickets, in order:
 
-1. 08 Build the explorer page
-2. 09 Add the dependency inspector
-3. 10 Check responsive and keyboard use
+1. 09 Add the dependency inspector
+2. 10 Check responsive and keyboard use
 
 The full plan and build order are in `docs/spec.md`.
 

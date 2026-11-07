@@ -12,24 +12,26 @@ export const metadata: Metadata = { title: "Architecture" };
 
 type Props = PageProps<"/repositories/[id]/architecture">;
 
-export default function ArchitecturePage({ params }: Props) {
+export default function ArchitecturePage({ params, searchParams }: Props) {
   return (
     <main className="flex min-h-0 flex-1 flex-col">
       <Suspense fallback={<p className="p-4 text-sm text-muted">Loading repository…</p>}>
-        <Architecture params={params} />
+        <Architecture params={params} searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Architecture({ params }: Pick<Props, "params">) {
+async function Architecture({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { id } = await params;
+  const { file } = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
 
   const repository = await getRepository(id);
   if (!repository) notFound();
 
   const run = await getLatestCompletedRun(id);
+  const initialFileId = Number(file);
 
   return (
     <>
@@ -42,7 +44,9 @@ async function Architecture({ params }: Pick<Props, "params">) {
 
       {run ? (
         <GraphExplorer
+          repositoryId={id}
           analysisId={run.id}
+          initialFileId={Number.isSafeInteger(initialFileId) ? initialFileId : null}
           repositoryUrl={repository.github_url}
           commitSha={run.commit_sha}
         />

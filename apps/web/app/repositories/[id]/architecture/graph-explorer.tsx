@@ -34,7 +34,13 @@ const EDGE_STYLES: Record<RelationshipType, { label: string; dash?: string; widt
 
 const MAX_SEARCH_RESULTS = 8;
 
-type Source = { analysisId: string; repositoryUrl: string; commitSha: string };
+type Source = {
+  repositoryId: string;
+  analysisId: string;
+  repositoryUrl: string;
+  commitSha: string;
+  initialFileId: number | null;
+};
 type GraphPayload = GraphData & { cycles: string[][] };
 
 export function GraphExplorer(source: Source) {
@@ -76,10 +82,19 @@ function Explorer(source: Source) {
 
 function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   const flow = useReactFlow();
-  const [expanded, setExpanded] = useState(() => defaultExpanded(data.files));
+  const initialFile = data.files.find((file) => file.id === source.initialFileId);
+  const [expanded, setExpanded] = useState(
+    () =>
+      new Set([
+        ...defaultExpanded(data.files),
+        ...(initialFile ? foldersOf(initialFile.path) : []),
+      ]),
+  );
   const [positions, setPositions] = useState<Positions | null>(null);
   const [layoutFailed, setLayoutFailed] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    initialFile ? `file:${initialFile.id}` : null,
+  );
   const [hideUnrelated, setHideUnrelated] = useState(false);
   const [hiddenTypes, setHiddenTypes] = useState<Set<RelationshipType>>(new Set());
   const [hiddenLanguages, setHiddenLanguages] = useState<Set<string>>(new Set());
@@ -88,7 +103,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   const [layoutRun, setLayoutRun] = useState(0);
   const [legendOpen, setLegendOpen] = useState(() => window.innerWidth >= 640);
   const [dragged, setDragged] = useState<Positions>({});
-  const pendingFocus = useRef<string | null>(null);
+  const pendingFocus = useRef<string | null>(initialFile ? `file:${initialFile.id}` : null);
   const worker = useRef<Worker | null>(null);
   const requestId = useRef(0);
 
@@ -441,6 +456,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
 
       {selectedFile && (
         <FilePanel
+          repositoryId={source.repositoryId}
           analysisId={source.analysisId}
           data={data}
           cycles={data.cycles}

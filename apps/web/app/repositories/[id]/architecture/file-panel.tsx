@@ -1,20 +1,16 @@
 "use client";
 
-import { ExternalLink, TriangleAlert, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { cycleContaining, fileConnections, githubFileUrl, type Connection } from "@/lib/graph/details";
-import type { GraphData, GraphFile, RelationshipType } from "@/lib/graph/types";
-
-const TYPE_LABELS: Record<RelationshipType, string> = {
-  static: "static",
-  dynamic: "dynamic",
-  reexport: "re-export",
-  type: "type-only",
-};
+import { ExternalLink, FolderTree, TriangleAlert, X } from "lucide-react";
+import Link from "next/link";
+import { useMemo } from "react";
+import { cycleContaining, fileConnections, githubFileUrl } from "@/lib/graph/details";
+import type { GraphData, GraphFile } from "@/lib/graph/types";
+import { ConnectionList, SourceView, useFileSource } from "../file-views";
 
 const MAX_CYCLE_FILES_SHOWN = 12;
 
 type Props = {
+  repositoryId: string;
   analysisId: string;
   data: GraphData;
   cycles: string[][];
@@ -28,6 +24,7 @@ type Props = {
 };
 
 export function FilePanel({
+  repositoryId,
   analysisId,
   data,
   cycles,
@@ -76,6 +73,12 @@ export function FilePanel({
             />
             Hide unrelated
           </label>
+          <Link
+            href={`/repositories/${repositoryId}/explorer?file=${file.id}`}
+            className="inline-flex items-center gap-1 text-accent hover:underline"
+          >
+            <FolderTree size={12} aria-hidden /> Open in Explorer
+          </Link>
           <a
             href={githubFileUrl(repositoryUrl, commitSha, file.path)}
             target="_blank"
@@ -148,94 +151,15 @@ export function FilePanel({
 
         <section>
           <h3 className="border-b border-line px-3 py-2 text-xs font-medium">Source</h3>
-          <SourcePreview key={file.id} analysisId={analysisId} fileId={file.id} />
+          <Source key={file.id} analysisId={analysisId} fileId={file.id} />
         </section>
       </div>
     </aside>
   );
 }
 
-function ConnectionList({
-  title,
-  empty,
-  connections,
-  color,
-  onOpenFile,
-}: {
-  title: string;
-  empty: string;
-  connections: Connection[];
-  color: string;
-  onOpenFile: (file: GraphFile) => void;
-}) {
-  return (
-    <section className="border-b border-line p-3 text-xs">
-      <h3 className={`font-medium ${color}`}>
-        {title} ({connections.length})
-      </h3>
-      {connections.length === 0 ? (
-        <p className="mt-1 text-muted">{empty}</p>
-      ) : (
-        <ul className="mt-1 space-y-0.5">
-          {connections.map(({ file, types }) => (
-            <li key={file.id}>
-              <button
-                type="button"
-                onClick={() => onOpenFile(file)}
-                title={file.path}
-                className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-elevated"
-              >
-                <span className="min-w-0 flex-1 truncate font-mono">{file.path}</span>
-                <span className="shrink-0 text-[10px] text-muted">
-                  {types.map((type) => TYPE_LABELS[type]).join(", ")}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function SourcePreview({ analysisId, fileId }: { analysisId: string; fileId: number }) {
-  const [html, setHtml] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch(`/api/analysis/${analysisId}/files/${fileId}`, { signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error?.message);
-        setHtml(payload.data.html);
-      })
-      .catch((failure: Error) => {
-        if (failure.name !== "AbortError") {
-          setError(failure.message || "We couldn't load this file.");
-        }
-      });
-
-    return () => controller.abort();
-  }, [analysisId, fileId]);
-
-  if (error) {
-    return (
-      <p role="alert" className="p-3 text-xs text-danger">
-        {error}
-      </p>
-    );
-  }
-  if (html === null) {
-    return (
-      <p role="status" className="p-3 text-xs text-muted">
-        Loading source from GitHub…
-      </p>
-    );
-  }
-  // Shiki escapes the code on the server, so repository content can't become markup here.
-  return <div className="source-view" dangerouslySetInnerHTML={{ __html: html }} />;
+function Source({ analysisId, fileId }: { analysisId: string; fileId: number }) {
+  return <SourceView {...useFileSource(analysisId, fileId)} />;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

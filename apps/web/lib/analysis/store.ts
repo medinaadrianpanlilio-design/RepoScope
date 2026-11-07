@@ -187,7 +187,7 @@ export async function getFile(analysisId: string, fileId: number) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("repository_files")
-    .select("file_path, language, line_count")
+    .select("file_path, language, line_count, exported_names")
     .eq("analysis_id", analysisId)
     .eq("id", fileId)
     .maybeSingle();
