@@ -6,8 +6,9 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
-inspector. Phases 4 and 5 are done too: local AI summaries and chat, insights, and change impact. Next is Phase 6,
-where daily use with Claude Code starts.
+inspector. Phases 4 and 5 are done too: local AI summaries and chat, insights, and change impact.
+Phase 6 is built and tested: local folders, `reposcope sync` and the MCP server. What's left of it is
+the owner's one-week trial in real coding sessions.
 
 ## Done
 
@@ -72,9 +73,25 @@ passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScr
 - Change impact is on the graph, from the file panel, and works across several files.
 - The overview has an architecture summary, and local AI can explain an insight.
 
+**Phase 6: Local folders, sync and MCP (tickets 01-08 of 9)**
+
+- Local folders are private Repositories, separate from any public record. See `docs/adr/0006`.
+- Keys are managed on the dashboard, in `apps/web/lib/keys`. MCP keys read, sync keys upload.
+- `packages/cli` has `login`, `sync` and `install-hook`. The hook syncs when a session starts or
+  resumes, in the background, and logs to `~/.reposcope/sync.log`.
+- `/api/mcp` has six tools. `get_conventions` honestly returns nothing until Phase 7.
+- Tested on the real database with two temporary accounts: 114 checks, and Claude Code as a real
+  client. That testing found three bugs, now fixed: a removed folder never came back, switching
+  branches left the other branch's facts showing, and the hook's settings file made a folder always
+  look edited.
+- Local folders on the site have no source view, exports list or per-file AI. Insight explanations work.
+
+Last results: 125 engine tests, 31 CLI tests, 296 web tests and 18 browser tests pass.
+
 ## Next
 
-Phase 6: Local folders, sync and MCP. Start at `.scratch/phase-6-mcp/spec.md`.
+1. Ticket 09: use RepoScope for a week in real sessions, at `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
+2. Phase 7: Conventions and risk warnings. Start at `.scratch/phase-7-conventions-risk`.
 
 The full plan and build order are in `docs/spec.md`.
 
@@ -86,6 +103,9 @@ The full plan and build order are in `docs/spec.md`.
 
 ## Open items
 
+- There's no limit on how many folders one account can sync. Fine for now, but add one before inviting
+  other people, as the free database is small.
+- The CLI runs from a checkout of this repo, on Node 24. Publishing it to npm is a Phase 9 question.
 - Database changes are run by hand in the Supabase SQL editor, in the order of `supabase/migrations/`.
 - Supabase reports "RLS enabled, no policy" for `rate_limits`. That is intentional: only the server
   may reach that table.
@@ -103,7 +123,7 @@ The full plan and build order are in `docs/spec.md`.
 - Keep `typescript` on `^6`. See `docs/adr/0003`.
 - Raise `ANALYSIS_VERSION` in `apps/web/lib/analysis/claim.ts` when results gain new data. Check for
   new commits then refreshes older analyses.
-- `npm run setup` installs both `apps/web` and `packages/engine`. If npm fails with `EALLOWSCRIPTS`,
+- `npm run setup` installs `apps/web`, `packages/engine` and `packages/cli`. If npm fails with `EALLOWSCRIPTS`,
   the cause is an `allow-scripts` line in the user-level `~/.npmrc`; set `NPM_CONFIG_USERCONFIG` to an
   empty file for that command. On a fresh checkout, run `npx next typegen` in `apps/web` before
   `typecheck`.

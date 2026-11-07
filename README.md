@@ -6,8 +6,9 @@ RepoScope builds a knowledge base of a repository from static analysis. People e
 interactive architecture graph, and coding agents read the same knowledge through MCP. Analysis
 decides the facts; AI only explains them.
 
-> **Status: early development.** Accounts, the dashboard and public repository import are built, and the
-> analysis engine works on its own. See [status](docs/status.md) and [the spec](docs/spec.md).
+> **Status: in development, and live at https://repo-scope-delta.vercel.app.** Public repositories,
+> the graph, local AI, insights, change impact, local folders and MCP are built. See
+> [status](docs/status.md) and [the spec](docs/spec.md).
 
 ## Run it
 
@@ -21,6 +22,21 @@ npm run dev                                    # http://localhost:3000
 
 Apply `supabase/migrations/` to your project. The variables are explained in
 [`apps/web/.env.example`](apps/web/.env.example).
+
+## Use it with Claude Code
+
+Sign in and open **Connect Claude Code** on the dashboard. Create an MCP key and run the command it
+shows. Then create a sync key and, with `npm run setup` done, run this from a project folder:
+
+```sh
+node path/to/RepoScope/packages/cli/src/index.ts login <sync key>
+node path/to/RepoScope/packages/cli/src/index.ts sync
+node path/to/RepoScope/packages/cli/src/index.ts install-hook   # optional: sync when a session starts
+```
+
+Needs Node.js 24, which runs the TypeScript directly. Only analysis results are uploaded. Your source
+stays on your computer, and a local folder is private to you. See
+[ADR 0006](docs/adr/0006-local-folders-stay-private.md).
 
 ## Check it
 
@@ -49,5 +65,5 @@ redirect URLs.
 
 ## Stack
 
-Next.js, TypeScript, Tailwind CSS, Supabase and Vercel, with the TypeScript Compiler API and React
-Flow coming in the next phases. Decisions are recorded in [`docs/adr`](docs/adr).
+Next.js, TypeScript, Tailwind CSS, Supabase and Vercel, with the TypeScript Compiler API for analysis,
+React Flow for the graph and MCP for coding agents. Decisions are recorded in [`docs/adr`](docs/adr).

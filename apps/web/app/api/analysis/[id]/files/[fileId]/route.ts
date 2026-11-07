@@ -25,6 +25,10 @@ export async function GET(
     const repository = await getRepository(run.repository_id);
     if (!repository) return notFound();
 
+    if (repository.source === "local" || !run.commit_sha) {
+      return apiError("local_source", "This file's source stays on your computer.", 409);
+    }
+
     if (!(await allowRequest("source", request.headers))) {
       return apiError("too_many_requests", "Too many files opened. Try again soon.", 429);
     }

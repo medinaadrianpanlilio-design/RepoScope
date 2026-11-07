@@ -12,8 +12,8 @@ which is local and git-ignored, one file per ticket at `issues/NN-slug.md`.
 | Path | What it is |
 |---|---|
 | `apps/web` | Next.js app: pages, API routes, Supabase access |
-| `packages/engine` | Analysis engine (arrives in Phase 2). No Next.js or Supabase imports |
-| `packages/cli` | `reposcope sync` (arrives in Phase 6) |
+| `packages/engine` | Analysis engine. No Next.js or Supabase imports |
+| `packages/cli` | `reposcope` command: analyzes a local folder and uploads results only |
 | `supabase/migrations` | Database schema |
 
 ## Commands
@@ -22,7 +22,7 @@ Run from the repo root.
 
 | Command | What it does |
 |---|---|
-| `npm run setup` | Install `apps/web` dependencies |
+| `npm run setup` | Install dependencies for `apps/web`, `packages/engine` and `packages/cli` |
 | `npm run dev` | Dev server on http://localhost:3000 |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
@@ -47,3 +47,7 @@ Run typecheck, lint and tests before calling work done.
   changes before every commit.
 - **Commits credit only the repo owner.** No AI attribution lines in commits or PRs.
 - **Keep layers apart.** UI, API, database and analysis logic stay separate.
+- **A local folder's source never leaves the PC.** The upload format has no field for it. Keep it that
+  way (see ADR 0006).
+- **Every MCP tool goes through `withRepository`.** It runs with the server client, so that check is
+  the only thing keeping one user's folders from another.

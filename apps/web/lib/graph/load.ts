@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type {
   GraphData,
@@ -22,11 +23,15 @@ type FileRow = {
 type EdgeRow = { source_file_id: number; target_file_id: number; relationship_type: string };
 type UnresolvedRow = { source_file_id: number; import_specifier: string; line_number: number };
 
-/** Reads as the visitor, so Row Level Security decides what they can see. */
+/**
+ * Reads as the visitor, so Row Level Security decides what they can see. A caller passing a
+ * server client must have checked access itself.
+ */
 export async function loadGraph(
   analysisId: string,
+  client?: SupabaseClient,
 ): Promise<GraphData & { unresolved: UnresolvedImport[] }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   async function readAll<T>(table: string, columns: string): Promise<T[]> {
     const rows: T[] = [];

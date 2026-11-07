@@ -68,6 +68,7 @@ export function RepositoryList({ repositories }: { repositories: SavedRepository
                   {repository.primary_language && (
                     <span className="block">{repository.primary_language}</span>
                   )}
+                  {repository.source === "local" && <span className="block">Local folder</span>}
                   <span className="block">{repository.analysis_label}</span>
                 </span>
               </Link>

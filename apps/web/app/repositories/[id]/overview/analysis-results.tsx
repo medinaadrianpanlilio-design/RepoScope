@@ -3,13 +3,14 @@ import { formatDate, languageShares, shortSha } from "@/lib/analysis/present";
 
 type Props = {
   stats: AnalysisStats;
-  commitSha: string;
+  commitSha: string | null;
+  baseCommitSha: string | null;
   completedAt: string | null;
 };
 
 const LANGUAGE_COLORS = ["bg-accent", "bg-accent-2", "bg-muted", "bg-line"];
 
-export function AnalysisResults({ stats, commitSha, completedAt }: Props) {
+export function AnalysisResults({ stats, commitSha, baseCommitSha, completedAt }: Props) {
   const { totals } = stats;
   const languages = languageShares(stats.languages);
   const largestDirectory = stats.directories[0]?.files ?? 0;
@@ -17,7 +18,21 @@ export function AnalysisResults({ stats, commitSha, completedAt }: Props) {
   return (
     <>
       <p className="mt-8 text-sm text-muted">
-        Analyzed commit <span className="font-mono text-foreground">{shortSha(commitSha)}</span>
+        {commitSha ? (
+          <>
+            Analyzed commit <span className="font-mono text-foreground">{shortSha(commitSha)}</span>
+          </>
+        ) : (
+          <>
+            Working copy, including uncommitted changes
+            {baseCommitSha && (
+              <>
+                {" "}
+                on <span className="font-mono text-foreground">{shortSha(baseCommitSha)}</span>
+              </>
+            )}
+          </>
+        )}
         {completedAt && ` on ${formatDate(completedAt)}`}
       </p>
 

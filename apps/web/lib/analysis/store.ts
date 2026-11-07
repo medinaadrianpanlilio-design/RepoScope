@@ -173,7 +173,7 @@ export async function getLatestCompletedRun(repositoryId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("analysis_runs")
-    .select("id, commit_sha, completed_at, stats")
+    .select("id, commit_sha, base_commit_sha, is_working_copy, completed_at, stats")
     .eq("repository_id", repositoryId)
     .eq("status", "completed")
     .order("completed_at", { ascending: false })

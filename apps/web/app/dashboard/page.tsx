@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ImportForm } from "@/components/import-form";
 import { requireUser } from "@/lib/auth";
 import { listSavedRepositories } from "@/lib/repositories/queries";
+import { ConnectPanel } from "./connect-panel";
 import { RepositoryList } from "./repository-list";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -42,6 +43,8 @@ async function Dashboard() {
           <RepositoryList repositories={repositories} />
         )}
       </section>
+
+      <ConnectPanel />
     </>
   );
 }

@@ -52,30 +52,42 @@ async function Overview({ params, searchParams }: Pick<Props, "params" | "search
         <div className="bg-card p-4">
           <dt className="text-xs text-muted">Source</dt>
           <dd className="mt-1 text-sm">
-            <a
-              href={repository.github_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 text-accent hover:underline"
-            >
-              View on GitHub <ExternalLink size={14} aria-hidden />
-            </a>
+            {repository.source === "local" ? (
+              "Local folder, private to you"
+            ) : (
+              <a
+                href={repository.github_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-1 text-accent hover:underline"
+              >
+                View on GitHub <ExternalLink size={14} aria-hidden />
+              </a>
+            )}
           </dd>
         </div>
       </dl>
 
-      <AnalysisPanel
-        key={panelKey}
-        repositoryId={repository.id}
-        run={run}
-        hasResults={completed !== null}
-        autoStart={analyze === "1"}
-      />
+      {repository.source === "local" ? (
+        <p className="mt-8 text-sm text-muted">
+          This folder updates when you run <code className="font-mono">reposcope sync</code> on your
+          PC. Its source stays there.
+        </p>
+      ) : (
+        <AnalysisPanel
+          key={panelKey}
+          repositoryId={repository.id}
+          run={run}
+          hasResults={completed !== null}
+          autoStart={analyze === "1"}
+        />
+      )}
 
       {completed && (
         <AnalysisResults
           stats={completed.stats as AnalysisStats}
           commitSha={completed.commit_sha}
+          baseCommitSha={completed.base_commit_sha}
           completedAt={completed.completed_at}
         />
       )}

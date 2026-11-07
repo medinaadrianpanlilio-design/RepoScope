@@ -47,8 +47,8 @@ async function Architecture({ params, searchParams }: Pick<Props, "params" | "se
           repositoryId={id}
           analysisId={run.id}
           initialFileId={Number.isSafeInteger(initialFileId) ? initialFileId : null}
-          repositoryUrl={repository.github_url}
-          commitSha={run.commit_sha}
+          repositoryUrl={repository.source === "github" ? repository.github_url : ""}
+          commitSha={run.commit_sha ?? ""}
         />
       ) : (
         <div className="m-4 rounded-md border border-dashed border-line p-8">

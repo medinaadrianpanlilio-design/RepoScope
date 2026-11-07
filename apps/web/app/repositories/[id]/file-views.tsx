@@ -21,7 +21,10 @@ const TYPE_LABELS: Record<RelationshipType, string> = {
 };
 
 type Source = { html: string; exports: string[]; content: string };
-export type SourceState = { source: Source | null; error: string | null };
+export type SourceState = { source: Source | null; error: string | null; staysLocal?: boolean };
+
+/** A local folder's source isn't on the server. That's the design, not a failure. */
+class SourceStaysLocal extends Error {}
 
 const MAX_CACHED_SOURCES = 40;
 const sources = new Map<string, Promise<Source>>();
@@ -34,6 +37,9 @@ function loadSource(analysisId: string, fileId: number): Promise<Source> {
 
   const request = fetch(`/api/analysis/${analysisId}/files/${fileId}`).then(async (response) => {
     const payload = await response.json();
+    if (response.status === 409 && payload.error?.code === "local_source") {
+      throw new SourceStaysLocal(payload.error.message);
+    }
     if (!response.ok) throw new Error(payload.error?.message);
     return payload.data as Source;
   });
@@ -57,7 +63,11 @@ export function useFileSource(analysisId: string, fileId: number): SourceState {
       })
       .catch((failure: Error) => {
         if (!cancelled) {
-          setState({ source: null, error: failure.message || "We couldn't load this file." });
+          setState({
+            source: null,
+            error: failure.message || "We couldn't load this file.",
+            staysLocal: failure instanceof SourceStaysLocal,
+          });
         }
       });
 
@@ -69,7 +79,8 @@ export function useFileSource(analysisId: string, fileId: number): SourceState {
   return state;
 }
 
-export function SourceView({ source, error }: SourceState) {
+export function SourceView({ source, error, staysLocal }: SourceState) {
+  if (staysLocal) return <p className="p-3 text-xs text-muted">{error}</p>;
   if (error) {
     return (
       <p role="alert" className="p-3 text-xs text-danger">

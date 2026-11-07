@@ -23,6 +23,10 @@ export async function POST(
     const repository = await getRepository(id);
     if (!repository) return notFound();
 
+    if (repository.source === "local") {
+      return apiError("local_repository", "Local folders update with reposcope sync.", 409);
+    }
+
     if (!(await allowRequest("analyze", request.headers))) {
       return apiError("too_many_requests", "Too many analyses. Try again in an hour.", 429);
     }

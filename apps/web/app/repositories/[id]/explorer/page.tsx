@@ -46,8 +46,8 @@ async function Explorer({ params, searchParams }: Pick<Props, "params" | "search
         <FileExplorer
           repositoryId={id}
           analysisId={run.id}
-          repositoryUrl={repository.github_url}
-          commitSha={run.commit_sha}
+          repositoryUrl={repository.source === "github" ? repository.github_url : ""}
+          commitSha={run.commit_sha ?? ""}
           initialFileId={Number.isSafeInteger(initialFileId) ? initialFileId : null}
         />
       ) : (

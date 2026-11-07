@@ -3,29 +3,18 @@ import {
   ArchiveError,
   buildFileSet,
   extractTarGz,
+  summarizeResult,
   type AnalysisResult,
   type FileSetOptions,
   type LimitExceeded,
+  type ResultSummary,
 } from "@reposcope/engine";
 import type { ArchiveDownload } from "@/lib/github/archive";
 import { ANALYSIS_VERSION } from "./claim";
 
 export type RunStatus = "fetching" | "scanning" | "parsing" | "saving";
 
-const MAX_STORED_DIRECTORIES = 50;
-const MAX_STORED_CYCLES = 100;
-const MAX_STORED_UNANALYZABLE = 100;
-const MAX_STORED_OTHER_FILES = 5000;
-
-export type AnalysisStats = Pick<AnalysisResult, "totals" | "languages" | "directories" | "cycles"> & {
-  version: string;
-  cycleCount: number;
-  otherFiles: string[];
-  otherFileCount: number;
-  externalPackages: string[];
-  unanalyzable: AnalysisResult["unanalyzable"];
-  unanalyzableCount: number;
-};
+export type AnalysisStats = ResultSummary & { version: string };
 
 export type PipelineDeps = {
   download: () => Promise<ArchiveDownload>;
@@ -58,7 +47,7 @@ export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = 
 
     await deps.setStatus("saving");
     await deps.save(result);
-    await deps.complete(toStats(result));
+    await deps.complete({ ...summarizeResult(result), version: ANALYSIS_VERSION });
   } catch (error) {
     if (error instanceof ArchiveError) {
       return await deps.fail(
@@ -70,22 +59,6 @@ export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = 
     console.error("Analysis failed:", error instanceof Error ? error.message : "unknown error");
     await deps.fail(GENERIC_FAILURE);
   }
-}
-
-function toStats(result: AnalysisResult): AnalysisStats {
-  return {
-    version: ANALYSIS_VERSION,
-    otherFiles: result.otherFiles.slice(0, MAX_STORED_OTHER_FILES),
-    otherFileCount: result.otherFiles.length,
-    totals: result.totals,
-    languages: result.languages,
-    directories: result.directories.slice(0, MAX_STORED_DIRECTORIES),
-    cycles: result.cycles.slice(0, MAX_STORED_CYCLES),
-    cycleCount: result.cycles.length,
-    externalPackages: result.externalPackages,
-    unanalyzable: result.unanalyzable.slice(0, MAX_STORED_UNANALYZABLE),
-    unanalyzableCount: result.unanalyzable.length,
-  };
 }
 
 function describeDownloadFailure(download: Extract<ArchiveDownload, { ok: false }>): string {

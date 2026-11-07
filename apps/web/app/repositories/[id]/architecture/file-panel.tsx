@@ -98,17 +98,21 @@ export function FilePanel({
           >
             <FolderTree size={12} aria-hidden /> Open in Explorer
           </Link>
-          <a
-            href={githubFileUrl(repositoryUrl, commitSha, file.path)}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-accent hover:underline"
-          >
-            View on GitHub <ExternalLink size={12} aria-hidden />
-          </a>
+          {repositoryUrl && commitSha && (
+            <a
+              href={githubFileUrl(repositoryUrl, commitSha, file.path)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-accent hover:underline"
+            >
+              View on GitHub <ExternalLink size={12} aria-hidden />
+            </a>
+          )}
         </div>
 
-        <LocalAiSection key={file.id} analysisId={analysisId} data={data} file={file} />
+        {repositoryUrl && (
+          <LocalAiSection key={file.id} analysisId={analysisId} data={data} file={file} />
+        )}
         <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
 
         <section>

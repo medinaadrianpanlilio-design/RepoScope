@@ -15,12 +15,14 @@ export type Repository = {
   default_branch: string;
   primary_language: string | null;
   created_at: string;
+  source: "github" | "local";
+  remote_full_name: string | null;
 };
 
 export type SavedRepository = Repository & { saved_at: string; analysis_label: string };
 
 const COLUMNS =
-  "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at";
+  "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at, source, remote_full_name";
 
 export async function upsertRepository(repository: RepositoryMetadata): Promise<string> {
   const { data, error } = await createAdminClient()

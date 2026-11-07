@@ -147,6 +147,20 @@ function Workspace({
   const hiddenOtherFiles = data.otherFileCount - (data.otherFiles?.length ?? 0);
 
   function renderEntry(entry: Entry, label: string, indent?: { paddingLeft: string }): ReactNode {
+    if (entry.id === null && !(repositoryUrl && commitSha)) {
+      return (
+        <span
+          title={`${entry.path}: not analyzed`}
+          style={indent}
+          className={`${rowClass(false)} text-muted`}
+        >
+          {indent && <span className="w-3 shrink-0" aria-hidden />}
+          {indent && <File size={13} className="shrink-0" aria-hidden />}
+          <span className="min-w-0 flex-1 truncate font-mono">{label}</span>
+        </span>
+      );
+    }
+
     if (entry.id === null) {
       return (
         <a
@@ -452,14 +466,16 @@ function FileView({
           >
             <Share2 size={12} aria-hidden /> View in graph
           </Link>
-          <a
-            href={githubFileUrl(repositoryUrl, commitSha, file.path)}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-accent hover:underline"
-          >
-            GitHub <ExternalLink size={12} aria-hidden />
-          </a>
+          {repositoryUrl && commitSha && (
+            <a
+              href={githubFileUrl(repositoryUrl, commitSha, file.path)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-accent hover:underline"
+            >
+              GitHub <ExternalLink size={12} aria-hidden />
+            </a>
+          )}
           <PanelToggle
             label={showConnections ? "Hide connections" : "Show connections"}
             onClick={onToggleConnections}
@@ -492,21 +508,23 @@ function FileView({
           {...CONNECTIONS_LIMITS}
         />
         <div className="h-full overflow-y-auto">
-        <LocalAiSection analysisId={analysisId} data={data} file={file} />
+        {repositoryUrl && <LocalAiSection analysisId={analysisId} data={data} file={file} />}
         <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
-        <section className="p-3 text-xs">
-          <h3 className="font-medium">Exports {state.source && `(${exported.length})`}</h3>
-          {state.source && exported.length === 0 && (
-            <p className="mt-1 text-muted">This file has no exports.</p>
-          )}
-          <ul className="mt-1 space-y-0.5">
-            {exported.map((name) => (
-              <li key={name} className="truncate px-1 font-mono">
-                {name}
-              </li>
-            ))}
-          </ul>
-        </section>
+        {!state.staysLocal && (
+          <section className="p-3 text-xs">
+            <h3 className="font-medium">Exports {state.source && `(${exported.length})`}</h3>
+            {state.source && exported.length === 0 && (
+              <p className="mt-1 text-muted">This file has no exports.</p>
+            )}
+            <ul className="mt-1 space-y-0.5">
+              {exported.map((name) => (
+                <li key={name} className="truncate px-1 font-mono">
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         </div>
       </aside>
     </>

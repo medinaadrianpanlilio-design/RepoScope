@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { CopyBox } from "@/components/copy-box";
 import { connectLocalAi, disconnectLocalAi, useLocalAi } from "@/lib/ai/connection";
 import { setupCommand, streamChat, type ChatMessage } from "@/lib/ai/local";
 import {
@@ -145,29 +146,6 @@ function Setup({ reason, endpoint }: { reason: "unreachable" | "loading"; endpoi
           <CopyBox text={`$env:OLLAMA_ORIGINS="${origin}"; ollama serve`} />
         </div>
       )}
-    </div>
-  );
-}
-
-function CopyBox({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // The text is on screen and can be selected by hand.
-    }
-  }
-
-  return (
-    <div className="mt-1 flex items-start gap-2 rounded border border-line bg-background p-2">
-      <code className="min-w-0 flex-1 font-mono text-[11px] break-all text-foreground">{text}</code>
-      <button type="button" onClick={copy} aria-label={copied ? "Copied" : "Copy command"} className="shrink-0">
-        {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-      </button>
     </div>
   );
 }
