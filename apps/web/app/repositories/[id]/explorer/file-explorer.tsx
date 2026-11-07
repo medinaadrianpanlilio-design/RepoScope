@@ -22,6 +22,7 @@ import type { GraphFile, GraphPayload } from "@/lib/graph/types";
 import { foldersOf } from "@/lib/graph/view";
 import { clamp, isTypingTarget } from "@/lib/ui/layout";
 import { DependencyInspector, SourceView, useFileSource } from "../file-views";
+import { LocalAiSection } from "../local-ai";
 
 /** A file RepoScope didn't analyze, such as a stylesheet or image. It opens on GitHub. */
 type OtherEntry = { id: null; path: string };
@@ -491,6 +492,7 @@ function FileView({
           {...CONNECTIONS_LIMITS}
         />
         <div className="h-full overflow-y-auto">
+        <LocalAiSection analysisId={analysisId} data={data} file={file} />
         <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
         <section className="p-3 text-xs">
           <h3 className="font-medium">Exports {state.source && `(${exported.length})`}</h3>

@@ -20,29 +20,50 @@ const TYPE_LABELS: Record<RelationshipType, string> = {
   type: "type-only",
 };
 
-type Source = { html: string; exports: string[] };
+type Source = { html: string; exports: string[]; content: string };
 export type SourceState = { source: Source | null; error: string | null };
+
+const MAX_CACHED_SOURCES = 40;
+const sources = new Map<string, Promise<Source>>();
+
+/** Keeps recent files, so reopening one is instant and doesn't count against the limit. */
+function loadSource(analysisId: string, fileId: number): Promise<Source> {
+  const key = `${analysisId}:${fileId}`;
+  const cached = sources.get(key);
+  if (cached) return cached;
+
+  const request = fetch(`/api/analysis/${analysisId}/files/${fileId}`).then(async (response) => {
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error?.message);
+    return payload.data as Source;
+  });
+
+  sources.set(key, request);
+  request.catch(() => sources.delete(key));
+  if (sources.size > MAX_CACHED_SOURCES) sources.delete(sources.keys().next().value as string);
+  return request;
+}
 
 /** Mount with a key per file, so a new file starts from the loading state. */
 export function useFileSource(analysisId: string, fileId: number): SourceState {
   const [state, setState] = useState<SourceState>({ source: null, error: null });
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
-    fetch(`/api/analysis/${analysisId}/files/${fileId}`, { signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error?.message);
-        setState({ source: payload.data, error: null });
+    loadSource(analysisId, fileId)
+      .then((source) => {
+        if (!cancelled) setState({ source, error: null });
       })
       .catch((failure: Error) => {
-        if (failure.name !== "AbortError") {
+        if (!cancelled) {
           setState({ source: null, error: failure.message || "We couldn't load this file." });
         }
       });
 
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [analysisId, fileId]);
 
   return state;

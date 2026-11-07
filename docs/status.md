@@ -6,7 +6,7 @@ Last updated: 7 November 2026. Read this first when picking the project back up.
 
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
-inspector. Next is Phase 4, Local AI.
+inspector. Phase 4, Local AI, is in progress: file summaries and chat work with a model on your own PC.
 
 ## Done
 
@@ -38,8 +38,8 @@ inspector. Next is Phase 4, Local AI.
 - 12 Daily maintenance at `/api/cron/daily`, protected by `CRON_SECRET`. Tested locally against the
   real database. The Vercel schedule itself has not run yet.
 
-Last results: 125 engine tests, 195 web tests and 15 browser tests pass, and the production build
-passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
+Last results: 125 engine tests and 228 web tests pass, and the production build passes. On
+microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScript.
 
 **Phase 3: Visualization (all 10 tickets)**
 
@@ -56,10 +56,16 @@ passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScr
 - 10 Resizable and collapsible panels, keyboard use across the graph and explorer, and browser tests
   in `apps/web/e2e/repository.spec.ts`.
 
+**Phase 4: Local AI (in progress)**
+
+- 01 Qwen3.5-4B is in `E:\tools\models`, and is the instruction-tuned model.
+- 02 Browsers can reach local AI from the deployed site. See `docs/adr/0005`.
+- 03, 06, 07 Setup screen, chat context and repo chat, with prompt-injection tests.
+
 ## Next
 
-Phase 4: Local AI. Start at `.scratch/phase-4-local-ai/spec.md`. Its first ticket needs the owner: download
-Qwen3.5-4B Instruct. The test of the browser reaching localhost comes next, and decides the approach.
+1. Run `supabase/migrations/20261107020000_ai_summaries.sql` in the Supabase SQL editor (tickets 04, 05)
+2. 08 Check Qwen's quality on real files
 
 The full plan and build order are in `docs/spec.md`.
 

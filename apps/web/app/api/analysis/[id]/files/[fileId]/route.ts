@@ -49,6 +49,7 @@ export async function GET(
       language: file.language,
       lines: file.line_count,
       exports: file.exported_names,
+      content: source.content,
       html: await highlightSource(source.content, file.language),
     });
   } catch (error) {

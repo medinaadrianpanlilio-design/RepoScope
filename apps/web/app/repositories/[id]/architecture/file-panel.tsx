@@ -6,6 +6,7 @@ import { ResizeHandle } from "@/components/resize-handle";
 import { githubFileUrl } from "@/lib/graph/details";
 import type { GraphFile, GraphPayload } from "@/lib/graph/types";
 import { DependencyInspector, SourceView, useFileSource } from "../file-views";
+import { LocalAiSection } from "../local-ai";
 
 export const PANEL_LIMITS = { min: 320, max: 760 };
 
@@ -95,6 +96,7 @@ export function FilePanel({
           </a>
         </div>
 
+        <LocalAiSection key={file.id} analysisId={analysisId} data={data} file={file} />
         <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
 
         <section>
