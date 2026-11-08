@@ -1,0 +1,54 @@
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { appCredentials, requestInstallationToken, statusChange, tokenSource } from "./app-auth";
+
+export type Installation = {
+  id: string;
+  github_installation_id: number;
+  suspended_at: string | null;
+  revoked_at: string | null;
+};
+
+const COLUMNS = "id, github_installation_id, suspended_at, revoked_at";
+
+/** The server client bypasses Row Level Security, so the filter on user_id is the access check. */
+export async function installationOf(userId: string, id: string): Promise<Installation | null> {
+  const { data, error } = await createAdminClient()
+    .from("github_installations")
+    .select(COLUMNS)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load installation: ${error.code}`);
+  return data;
+}
+
+/**
+ * Tokens for one job. Open a new source for each job and let it go afterwards, so a token never
+ * outlives the work it was made for. A removed installation can't come back, so it isn't retried.
+ */
+export function openTokenSource(
+  installation: Installation,
+  { repositoryIds }: { repositoryIds?: number[] } = {},
+) {
+  return tokenSource(async () => {
+    if (installation.revoked_at) return { ok: false, error: "revoked" };
+
+    const credentials = appCredentials(process.env);
+    if (!credentials) return { ok: false, error: "not_configured" };
+
+    const result = await requestInstallationToken(credentials, installation.github_installation_id, {
+      repositoryIds,
+    });
+
+    const change = statusChange(installation, result);
+    if (change) {
+      await createAdminClient()
+        .from("github_installations")
+        .update({ ...change, updated_at: new Date().toISOString() })
+        .eq("id", installation.id);
+    }
+    return result;
+  });
+}

@@ -142,7 +142,7 @@ export async function fetchLatestCommit(
   return /^[0-9a-f]{40}$/.test(sha) ? { ok: true, sha } : { ok: false, error: "upstream" };
 }
 
-function isRateLimited(response: Response): boolean {
+export function isRateLimited(response: Response): boolean {
   if (response.status !== 403 && response.status !== 429) return false;
   return (
     response.headers.get("x-ratelimit-remaining") === "0" ||

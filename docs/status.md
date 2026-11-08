@@ -108,13 +108,15 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   `docs/adr/0008`. `e2e/private-access.spec.ts` proves it on the real database, across every table.
 - Writing it found a bug from Phase 6: anyone holding a local folder's id could save it, and MCP would
   then serve it to them. Fixed in the migration and in `repositoriesOf`.
+- 03 The token service is built, in `lib/github/app-auth.ts` and `installation-tokens.ts`. Tokens can't
+  print or serialize, and live in memory for one job. A real token hasn't been issued yet, because no
+  installation exists until ticket 04.
 
-Last results: 164 engine tests, 31 CLI tests, 343 web tests and 16 database tests pass.
+Last results: 164 engine tests, 31 CLI tests, 386 web tests and 16 database tests pass.
 
 ## Next
 
-1. Ticket 01: the owner registers the GitHub App. Tickets 03, 04 and 05 wait for it. Ticket 06 needs only
-   the schema, but can't be tried on real deliveries until the App exists.
+1. Ticket 04: Connect GitHub, at `.scratch/phase-8-github-app/issues/04-connect-flow.md`.
 2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
