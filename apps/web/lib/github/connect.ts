@@ -16,7 +16,10 @@ export type OAuthCredentials = { clientId: string; clientSecret: string; slug: s
 export function oauthCredentials(env: Record<string, string | undefined>): OAuthCredentials | null {
   const clientId = env.GITHUB_APP_CLIENT_ID;
   const clientSecret = env.GITHUB_APP_CLIENT_SECRET;
-  const slug = env.GITHUB_APP_SLUG;
+  // People often paste the App's whole public link, so keep only its name.
+  const slug = env.GITHUB_APP_SLUG?.trim()
+    .replace(/^.*\/apps\//, "")
+    .replace(/\/+$/, "");
   return clientId && clientSecret && slug ? { clientId, clientSecret, slug } : null;
 }
 

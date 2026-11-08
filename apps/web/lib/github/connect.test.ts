@@ -55,6 +55,13 @@ describe("oauthCredentials", () => {
     };
     expect(oauthCredentials(env)).toEqual(oauth);
     expect(oauthCredentials({ ...env, GITHUB_APP_SLUG: "" })).toBeNull();
+  });
+
+  it("accepts the App's public link in place of its name", () => {
+    const env = { GITHUB_APP_CLIENT_ID: "a", GITHUB_APP_CLIENT_SECRET: "b" };
+    for (const link of ["https://github.com/apps/reposcope-test", " github.com/apps/reposcope-test/ "]) {
+      expect(oauthCredentials({ ...env, GITHUB_APP_SLUG: link })?.slug).toBe("reposcope-test");
+    }
     expect(oauthCredentials({ ...env, GITHUB_APP_CLIENT_SECRET: undefined })).toBeNull();
   });
 });
