@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   appCredentials,
   createAppJwt,
-  InstallationToken,
+  GitHubToken,
   requestInstallationToken,
   statusChange,
   tokenSource,
@@ -172,7 +172,7 @@ describe("requestInstallationToken", () => {
 });
 
 describe("keeping secrets out of sight", () => {
-  const token = new InstallationToken(SECRET_TOKEN, NOW);
+  const token = new GitHubToken(SECRET_TOKEN, NOW);
 
   it("hides the token from JSON, so a response can't carry it", () => {
     expect(JSON.stringify({ token })).not.toContain(SECRET_TOKEN);
@@ -230,7 +230,7 @@ describe("keeping secrets out of sight", () => {
 describe("tokenSource", () => {
   const issued = (expiresAt: number): TokenResult => ({
     ok: true,
-    token: new InstallationToken(SECRET_TOKEN, expiresAt),
+    token: new GitHubToken(SECRET_TOKEN, expiresAt),
   });
 
   it("reuses a token that still has time left", async () => {
@@ -269,7 +269,7 @@ describe("statusChange", () => {
   const active = { suspended_at: null, revoked_at: null };
   const suspended = { suspended_at: "2026-11-01T00:00:00Z", revoked_at: null };
   const stamp = new Date(NOW).toISOString();
-  const ok: TokenResult = { ok: true, token: new InstallationToken(SECRET_TOKEN, NOW) };
+  const ok: TokenResult = { ok: true, token: new GitHubToken(SECRET_TOKEN, NOW) };
 
   it("records a removed installation", () => {
     expect(statusChange(active, { ok: false, error: "revoked" }, NOW)).toEqual({ revoked_at: stamp });

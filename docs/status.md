@@ -111,13 +111,17 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
 - 03 The token service is built, in `lib/github/app-auth.ts` and `installation-tokens.ts`. Tokens can't
   print or serialize, and live in memory for one job. A real token hasn't been issued yet, because no
   installation exists until ticket 04.
+- 04 Connect GitHub is built: the dashboard's GitHub section, `/api/github/connect` and
+  `/api/github/callback`. See `docs/adr/0009`. Checked locally with a fake App; the first real install
+  is still to do, on the live site.
 
-Last results: 164 engine tests, 31 CLI tests, 386 web tests and 16 database tests pass.
+Last results: 164 engine tests, 31 CLI tests, 421 web tests and 16 database tests pass.
 
 ## Next
 
-1. Ticket 04: Connect GitHub, at `.scratch/phase-8-github-app/issues/04-connect-flow.md`.
-2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Install the App on the live site and finish ticket 04's checks.
+2. Ticket 05: import private repositories.
+3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.

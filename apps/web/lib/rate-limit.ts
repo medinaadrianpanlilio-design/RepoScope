@@ -6,6 +6,7 @@ const LIMITS = {
   import: { limit: 20, windowSeconds: 3600 },
   analyze: { limit: 10, windowSeconds: 3600 },
   source: { limit: 300, windowSeconds: 3600 },
+  github: { limit: 30, windowSeconds: 3600 },
 } as const;
 
 /** Returns true when the request may go ahead. */

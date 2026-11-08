@@ -28,17 +28,17 @@ export type TokenError =
   | "upstream";
 
 export type TokenResult =
-  | { ok: true; token: InstallationToken }
+  | { ok: true; token: GitHubToken }
   | { ok: false; error: TokenError }
   | { ok: false; error: "rate_limited"; resetAt: string | null };
 
 type InstallationStatus = { suspended_at: string | null; revoked_at: string | null };
 
 /**
- * An installation token that can't be shown by accident: JSON, strings and logs all print a
+ * A GitHub token that can't be shown by accident: JSON, strings and logs all print a
  * placeholder, and the real value lives in a private field. Tokens are never stored.
  */
-export class InstallationToken {
+export class GitHubToken {
   readonly #value: string;
   readonly expiresAt: number;
 
@@ -166,12 +166,12 @@ export async function requestInstallationToken(
   const exact = Object.entries(PERMISSIONS).every(([name, level]) => permissions[name] === level);
   if (!exact) return { ok: false, error: "under_permissioned" };
 
-  return { ok: true, token: new InstallationToken(token, expiresAt) };
+  return { ok: true, token: new GitHubToken(token, expiresAt) };
 }
 
 /** Keeps one token for one job, in memory, and replaces it before it can expire mid-way. */
 export function tokenSource(fresh: () => Promise<TokenResult>, now: () => number = Date.now) {
-  let current: InstallationToken | null = null;
+  let current: GitHubToken | null = null;
 
   return async (): Promise<TokenResult> => {
     if (current && current.expiresAt - now() > EXPIRY_MARGIN_MS) return { ok: true, token: current };

@@ -4,23 +4,24 @@ import { ImportForm } from "@/components/import-form";
 import { requireUser } from "@/lib/auth";
 import { listSavedRepositories } from "@/lib/repositories/queries";
 import { ConnectPanel } from "./connect-panel";
+import { GitHubPanel } from "./github-panel";
 import { RepositoryList } from "./repository-list";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-export default function DashboardPage() {
+export default function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
       <Suspense fallback={<p className="text-sm text-muted">Loading your repositories…</p>}>
-        <Dashboard />
+        <Dashboard searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Dashboard() {
+async function Dashboard({ searchParams }: Pick<PageProps<"/dashboard">, "searchParams">) {
   const user = await requireUser();
-  const repositories = await listSavedRepositories();
+  const [repositories, { github }] = await Promise.all([listSavedRepositories(), searchParams]);
 
   return (
     <>
@@ -43,6 +44,10 @@ async function Dashboard() {
           <RepositoryList repositories={repositories} />
         )}
       </section>
+
+      <Suspense fallback={<p className="mt-10 text-sm text-muted">Checking GitHub…</p>}>
+        <GitHubPanel userId={user.id} outcome={typeof github === "string" ? github : undefined} />
+      </Suspense>
 
       <ConnectPanel />
     </>
