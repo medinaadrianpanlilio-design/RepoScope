@@ -129,16 +129,15 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   database. Each Installation now keeps the repositories its user was checked against when connecting
   (`verified_repository_ids`), and nothing else opens through it, so an organization owner widening an
   Installation can't expose a repository the user can't see. Checked on the real database (9 checks)
-  and with signed and unsigned deliveries to a local server.
+  and with signed and unsigned deliveries to a local server. Proven on the live site on 2026-11-09: a
+  push to a private repository's main branch was analyzed on its own within seconds.
 
 Last results: 164 engine tests, 31 CLI tests, 484 web tests and 16 database tests pass.
 
 ## Next
 
-1. Connect GitHub again once, so the existing Installation gets its checked list. Then push to a
-   private repository and watch it analyze.
-2. Ticket 07: analyze only what changed.
-3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Ticket 07: analyze only what changed.
+2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.
