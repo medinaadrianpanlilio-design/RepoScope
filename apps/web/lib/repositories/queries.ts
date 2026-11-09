@@ -2,6 +2,7 @@ import "server-only";
 import { displayStatus, type RunRecord } from "@/lib/analysis/claim";
 import { analysisLabel } from "@/lib/analysis/present";
 import type { RepositoryMetadata } from "@/lib/github/client";
+import type { PrivateFound } from "@/lib/github/repository-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,12 +18,15 @@ export type Repository = {
   created_at: string;
   source: "github" | "local";
   remote_full_name: string | null;
+  github_id: number | null;
+  installation_id: string | null;
+  is_private: boolean;
 };
 
 export type SavedRepository = Repository & { saved_at: string; analysis_label: string };
 
 const COLUMNS =
-  "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at, source, remote_full_name";
+  "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at, source, remote_full_name, github_id, installation_id, is_private";
 
 export async function upsertRepository(repository: RepositoryMetadata): Promise<string> {
   const { data, error } = await createAdminClient()
@@ -46,6 +50,68 @@ export async function upsertRepository(repository: RepositoryMetadata): Promise<
     .single();
 
   if (error) throw new Error(`Could not store repository: ${error.code}`);
+  return data.id;
+}
+
+/**
+ * Stores a private repository under the user who connected its installation. A repository that
+ * was public before is converted in one update, and everyone else's saved copy is removed, so it
+ * leaves their dashboards as well as their reach. Returns null when someone else owns it.
+ */
+export async function upsertPrivateRepository(
+  userId: string,
+  { repository, installationId }: PrivateFound,
+  retried = false,
+): Promise<string | null> {
+  const db = createAdminClient();
+  const { data: existing, error } = await db
+    .from("repositories")
+    .select("id, owner_user_id")
+    .eq("github_id", repository.githubId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not check repository: ${error.code}`);
+  if (existing?.owner_user_id && existing.owner_user_id !== userId) return null;
+
+  const fields = {
+    owner: repository.owner,
+    name: repository.name,
+    full_name: repository.fullName,
+    github_url: repository.githubUrl,
+    description: repository.description,
+    default_branch: repository.defaultBranch,
+    primary_language: repository.primaryLanguage,
+    source: "github",
+    is_private: true,
+    owner_user_id: userId,
+    installation_id: installationId,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existing) {
+    const { error: updateError } = await db.from("repositories").update(fields).eq("id", existing.id);
+    if (updateError) throw new Error(`Could not update repository: ${updateError.code}`);
+
+    if (!existing.owner_user_id) {
+      const { error: unsaveError } = await db
+        .from("saved_repositories")
+        .delete()
+        .eq("repository_id", existing.id)
+        .neq("user_id", userId);
+      if (unsaveError) throw new Error(`Could not unsave repository: ${unsaveError.code}`);
+    }
+    return existing.id;
+  }
+
+  const { data, error: insertError } = await db
+    .from("repositories")
+    .insert({ ...fields, github_id: repository.githubId })
+    .select("id")
+    .single();
+  // Someone stored it a moment earlier, so look again and decide from that row.
+  if (insertError?.code === "23505" && !retried) {
+    return upsertPrivateRepository(userId, { repository, installationId }, true);
+  }
+  if (insertError) throw new Error(`Could not store repository: ${insertError.code}`);
   return data.id;
 }
 

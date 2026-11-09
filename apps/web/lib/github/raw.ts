@@ -8,18 +8,24 @@ export type SourceFetch =
   | { ok: true; content: string }
   | { ok: false; error: "not_found" | "too_large" | "upstream" };
 
-type Options = { maxBytes?: number; fetchImpl?: typeof fetch };
+type Options = {
+  maxBytes?: number;
+  fetchImpl?: typeof fetch;
+  /** An installation token. Without one, only public files can be read. */
+  token?: string;
+};
 
 /**
- * Reads one public file at a fixed commit. Source is never stored, so it's fetched each
- * time it's viewed. raw.githubusercontent.com doesn't count against the API rate limit.
+ * Reads one file at a fixed commit. Source is never stored, so it's fetched each time it's
+ * viewed. Public files come from raw.githubusercontent.com, which doesn't count against the API
+ * rate limit. Private files come from the contents API, so the token only ever goes to GitHub's API.
  */
 export async function fetchSourceFile(
   owner: string,
   repo: string,
   commitSha: string,
   path: string,
-  { maxBytes = DEFAULT_MAX_BYTES, fetchImpl = fetch }: Options = {},
+  { maxBytes = DEFAULT_MAX_BYTES, fetchImpl = fetch, token }: Options = {},
 ): Promise<SourceFetch> {
   const parts = path.split("/");
   if (
@@ -32,11 +38,21 @@ export async function fetchSourceFile(
   }
 
   const encodedPath = parts.map(encodeURIComponent).join("/");
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${commitSha}/${encodedPath}`;
+  const url = token
+    ? `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${commitSha}`
+    : `https://raw.githubusercontent.com/${owner}/${repo}/${commitSha}/${encodedPath}`;
+  const headers: Record<string, string> = token
+    ? {
+        accept: "application/vnd.github.raw+json",
+        authorization: `Bearer ${token}`,
+        "x-github-api-version": "2022-11-28",
+        "user-agent": "RepoScope",
+      }
+    : { "user-agent": "RepoScope" };
 
   try {
     const response = await fetchImpl(url, {
-      headers: { "user-agent": "RepoScope" },
+      headers,
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",

@@ -72,4 +72,35 @@ describe("fetchSourceFile", () => {
 
     expect(result).toEqual({ ok: false, error: "too_large" });
   });
+
+  it("reads a private file through the contents API, with the token in a header", async () => {
+    const fetchImpl = respond("secret code");
+    const result = await fetchSourceFile("o", "r", sha, "src/a b.ts", { fetchImpl, token: "tok" });
+
+    expect(result).toEqual({ ok: true, content: "secret code" });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe(`https://api.github.com/repos/o/r/contents/src/a%20b.ts?ref=${sha}`);
+    expect(String(url)).not.toContain("tok");
+    expect(init?.headers).toMatchObject({
+      accept: "application/vnd.github.raw+json",
+      authorization: "Bearer tok",
+    });
+    expect(init?.redirect).toBe("error");
+  });
+
+  it("never sends a header to raw.githubusercontent.com that could carry a token", async () => {
+    const fetchImpl = respond("x");
+    await fetchSourceFile("o", "r", sha, "a.ts", { fetchImpl });
+
+    expect(fetchImpl.mock.calls[0]![1]?.headers).toEqual({ "user-agent": "RepoScope" });
+  });
+
+  it("checks a private path the same way before any request", async () => {
+    const fetchImpl = respond("x");
+
+    expect(
+      await fetchSourceFile("o", "r", sha, "../secret.ts", { fetchImpl, token: "tok" }),
+    ).toEqual({ ok: false, error: "not_found" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
 });

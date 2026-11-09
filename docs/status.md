@@ -115,13 +115,22 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   installation linked after the real code exchange, user-side checks and an installation token.
 - Once the App is installed, Connect GitHub leads to GitHub's settings, which don't come back. Opening
   `/api/github/callback` directly finishes connecting. Ticket 08 adds a link for this.
+- 05 Private repositories import, analyze and show source. A pasted link that the server can't see is
+  looked up through the user's own Installation, and the dashboard's GitHub list has an Open button.
+  Analysis, source and found conventions all read through one `RepositoryReader`, so public and private
+  repositories take the same steps. A private one gets a new token per request, limited to that one
+  repository, so GitHub rechecks access every time. Private source comes from the contents API, so the
+  token only goes to GitHub's API. A public row that went private is converted, and other users' saved
+  copies are removed. Checked on the real database: conversion, a second owner refused, two racing
+  imports giving one row.
 
-Last results: 164 engine tests, 31 CLI tests, 422 web tests and 16 database tests pass.
+Last results: 164 engine tests, 31 CLI tests, 456 web tests and 16 database tests pass.
 
 ## Next
 
-1. Ticket 05: import private repositories.
-2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Open a private repository on the live site, to finish ticket 05.
+2. Ticket 06: webhooks.
+3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.

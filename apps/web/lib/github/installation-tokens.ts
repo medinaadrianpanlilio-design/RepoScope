@@ -25,6 +25,30 @@ export async function installationOf(userId: string, id: string): Promise<Instal
 }
 
 /**
+ * The user's installation on one GitHub account, if they connected it. A live one wins over a
+ * removed one, so the caller can tell "not connected" from "uninstalled".
+ */
+export async function installationForAccount(
+  userId: string,
+  accountLogin: string,
+): Promise<Installation | null> {
+  // GitHub logins are letters, digits and hyphens, so nothing here can act as a wildcard.
+  if (!/^[a-z\d-]{1,39}$/i.test(accountLogin)) return null;
+
+  const { data, error } = await createAdminClient()
+    .from("github_installations")
+    .select(COLUMNS)
+    .eq("user_id", userId)
+    .ilike("account_login", accountLogin)
+    .order("revoked_at", { ascending: false, nullsFirst: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load installation: ${error.code}`);
+  return data;
+}
+
+/**
  * Tokens for one job. Open a new source for each job and let it go afterwards, so a token never
  * outlives the work it was made for. A removed installation can't come back, so it isn't retried.
  */

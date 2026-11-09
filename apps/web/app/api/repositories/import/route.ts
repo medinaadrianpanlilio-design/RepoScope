@@ -2,9 +2,14 @@ import { z } from "zod";
 import { apiData, apiError } from "@/lib/api";
 import { getOptionalUser } from "@/lib/auth";
 import { fetchRepositoryMetadata } from "@/lib/github/client";
+import { describeAccess, findPrivateRepository } from "@/lib/github/repository-access";
 import { allowRequest } from "@/lib/rate-limit";
 import { importRepository } from "@/lib/repositories/import";
-import { saveRepository, upsertRepository } from "@/lib/repositories/queries";
+import {
+  saveRepository,
+  upsertPrivateRepository,
+  upsertRepository,
+} from "@/lib/repositories/queries";
 import { MissingSecretKeyError } from "@/lib/supabase/admin";
 
 const body = z.object({ url: z.string().max(2048) });
@@ -25,6 +30,13 @@ export async function POST(request: Request) {
           fetchRepositoryMetadata(owner, repo, { token: process.env.GITHUB_TOKEN }),
         upsert: upsertRepository,
         save: saveRepository,
+        private: user
+          ? {
+              lookup: (owner, repo) => findPrivateRepository(user.id, owner, repo),
+              upsert: (found) => upsertPrivateRepository(user.id, found),
+              describe: describeAccess,
+            }
+          : undefined,
       },
     );
 

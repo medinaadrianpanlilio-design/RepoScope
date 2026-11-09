@@ -41,10 +41,15 @@ type Options = {
   fetchImpl?: typeof fetch;
 };
 
+type MetadataOptions = Options & {
+  /** Only for an installation token, whose answers belong to the user who connected it. */
+  allowPrivate?: boolean;
+};
+
 export async function fetchRepositoryMetadata(
   owner: string,
   repo: string,
-  { token, fetchImpl = fetch }: Options = {},
+  { token, fetchImpl = fetch, allowPrivate = false }: MetadataOptions = {},
 ): Promise<RepositoryLookup> {
   const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
@@ -81,9 +86,8 @@ export async function fetchRepositoryMetadata(
   if (!parsed.success) return { ok: false, error: "upstream" };
 
   const data = parsed.data;
-  // Private repositories arrive with the GitHub App in Phase 8. Until then a server
-  // token must never pull one into the public catalog.
-  if (data.private) return { ok: false, error: "not_found" };
+  // The server's own token must never pull a private repository into the public catalog.
+  if (data.private && !allowPrivate) return { ok: false, error: "not_found" };
 
   return {
     ok: true,

@@ -68,6 +68,16 @@ describe("fetchRepositoryMetadata", () => {
     expect(result).toEqual({ ok: false, error: "not_found" });
   });
 
+  it("returns a private repository only when asked, for an installation token", async () => {
+    const result = await fetchRepositoryMetadata("a", "b", {
+      token: "installation",
+      allowPrivate: true,
+      fetchImpl: respond(200, { ...repoBody, private: true }),
+    });
+
+    expect(result).toMatchObject({ ok: true, repository: { isPrivate: true, githubId: 70107786 } });
+  });
+
   it.each([403, 429])("reports a %i rate limit with its reset time", async (status) => {
     const result = await fetchRepositoryMetadata("a", "b", {
       fetchImpl: respond(status, {}, {

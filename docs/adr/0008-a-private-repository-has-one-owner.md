@@ -22,5 +22,16 @@ analysis, but every read would depend on keeping that table correct, and a mista
   `repositoriesOf` now checks ownership too, because a shared row can become someone's private one after
   others saved it.
 
+## Reading a private repository
+
+Analysis, source viewing and found conventions read through `RepositoryReader`. Only the token differs:
+a private repository gets a new one for each request, limited to that repository, after checking that
+the Installation belongs to the user asking. Nothing is cached, so removing a repository from the App
+on GitHub takes effect on the next request. Private files come from the contents API, so the token never
+goes to raw.githubusercontent.com.
+
+A repository that went private may already have a public row. Importing it converts that row in one
+update and removes every other user's saved copy.
+
 `e2e/private-access.spec.ts` checks every table on a real database, and fails when a new table isn't
 listed in it.

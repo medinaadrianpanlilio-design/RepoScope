@@ -4,8 +4,8 @@ import { apiData, apiError } from "@/lib/api";
 import { claimRun } from "@/lib/analysis/claim";
 import { runPipeline } from "@/lib/analysis/pipeline";
 import { runStore, runWriter } from "@/lib/analysis/store";
-import { downloadArchive } from "@/lib/github/archive";
-import { fetchLatestCommit } from "@/lib/github/client";
+import { getOptionalUser } from "@/lib/auth";
+import { describeAccess, openRepository } from "@/lib/github/repository-access";
 import { allowRequest } from "@/lib/rate-limit";
 import { getRepository } from "@/lib/repositories/queries";
 import { MissingSecretKeyError } from "@/lib/supabase/admin";
@@ -31,9 +31,15 @@ export async function POST(
       return apiError("too_many_requests", "Too many analyses. Try again in an hour.", 429);
     }
 
-    const token = process.env.GITHUB_TOKEN;
-    const { owner, name, default_branch: branch } = repository;
-    const commit = await fetchLatestCommit(owner, name, branch, { token });
+    const user = await getOptionalUser();
+    const access = await openRepository(repository, user?.id ?? null);
+    if (!access.ok) {
+      const failure = describeAccess(access.error);
+      return apiError(failure.code, failure.message, failure.status);
+    }
+
+    const { reader } = access;
+    const commit = await reader.latestCommit(repository.default_branch);
 
     if (!commit.ok) {
       return commit.error === "rate_limited"
@@ -47,7 +53,7 @@ export async function POST(
       after(() =>
         runPipeline({
           ...runWriter(run.id),
-          download: () => downloadArchive(owner, name, commit.sha, { token }),
+          download: () => reader.download(commit.sha),
         }),
       );
     }

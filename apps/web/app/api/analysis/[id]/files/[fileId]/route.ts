@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiData, apiError } from "@/lib/api";
 import { getFile, getRun } from "@/lib/analysis/store";
-import { fetchSourceFile } from "@/lib/github/raw";
+import { getOptionalUser } from "@/lib/auth";
+import { describeAccess, openRepository } from "@/lib/github/repository-access";
 import { allowRequest } from "@/lib/rate-limit";
 import { getRepository } from "@/lib/repositories/queries";
 import { highlightSource } from "@/lib/source/highlight";
@@ -33,12 +34,15 @@ export async function GET(
       return apiError("too_many_requests", "Too many files opened. Try again soon.", 429);
     }
 
-    const source = await fetchSourceFile(
-      repository.owner,
-      repository.name,
-      run.commit_sha,
-      file.file_path,
-    );
+    // A private repository is rechecked with GitHub on every file opened.
+    const user = await getOptionalUser();
+    const access = await openRepository(repository, user?.id ?? null);
+    if (!access.ok) {
+      const failure = describeAccess(access.error);
+      return apiError(failure.code, failure.message, failure.status);
+    }
+
+    const source = await access.reader.file(run.commit_sha, file.file_path);
 
     if (!source.ok) {
       return source.error === "too_large"

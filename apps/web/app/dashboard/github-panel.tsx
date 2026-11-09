@@ -1,5 +1,6 @@
 import { connectMessage, oauthCredentials } from "@/lib/github/connect";
 import { listConnections, type Connection } from "@/lib/github/connections";
+import { OpenRepository } from "./open-repository";
 
 const MAX_SHOWN = 50;
 
@@ -90,13 +91,15 @@ function ConnectionCard({ connection }: { connection: Connection }) {
                 >
                   {repository.isPrivate ? "Private" : "Public"}
                 </span>
+                <OpenRepository fullName={repository.fullName} />
               </li>
             ))}
           </ul>
           <p className="border-t border-line px-3 py-2 text-xs text-muted">
             {hidden > 0 && `And ${hidden.toLocaleString("en-US")} more. `}
             {!connection.complete && "Only the first 1,000 are listed. "}
-            Analyzing these repositories isn&apos;t built yet. It&apos;s the next step.
+            Private repositories open only for you. Their source is read from GitHub when you view it,
+            never stored.
           </p>
         </>
       )}

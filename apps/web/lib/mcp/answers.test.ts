@@ -64,6 +64,11 @@ describe("chooseRepository", () => {
     expect(chooseRepository([publicCopy, clone], "app")).toBe(clone);
   });
 
+  it("prefers the synced clone over its private GitHub record too", () => {
+    const privateCopy = { full_name: "me/app", source: "github" };
+    expect(chooseRepository([privateCopy, clone], "app")).toBe(clone);
+  });
+
   it("doesn't guess between two different repositories", () => {
     expect(chooseRepository([publicCopy, other], "app")).toBeNull();
   });
