@@ -109,19 +109,19 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
 - Writing it found a bug from Phase 6: anyone holding a local folder's id could save it, and MCP would
   then serve it to them. Fixed in the migration and in `repositoriesOf`.
 - 03 The token service is built, in `lib/github/app-auth.ts` and `installation-tokens.ts`. Tokens can't
-  print or serialize, and live in memory for one job. A real token hasn't been issued yet, because no
-  installation exists until ticket 04.
+  print or serialize, and live in memory for one job. Real tokens are now issued on the live site.
 - 04 Connect GitHub is built: the dashboard's GitHub section, `/api/github/connect` and
-  `/api/github/callback`. See `docs/adr/0009`. Checked locally with a fake App; the first real install
-  is still to do, on the live site.
+  `/api/github/callback`. See `docs/adr/0009`. Proven on the live site on 2026-11-09: the owner's
+  installation linked after the real code exchange, user-side checks and an installation token.
+- Once the App is installed, Connect GitHub leads to GitHub's settings, which don't come back. Opening
+  `/api/github/callback` directly finishes connecting. Ticket 08 adds a link for this.
 
-Last results: 164 engine tests, 31 CLI tests, 421 web tests and 16 database tests pass.
+Last results: 164 engine tests, 31 CLI tests, 422 web tests and 16 database tests pass.
 
 ## Next
 
-1. Install the App on the live site and finish ticket 04's checks.
-2. Ticket 05: import private repositories.
-3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Ticket 05: import private repositories.
+2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.
