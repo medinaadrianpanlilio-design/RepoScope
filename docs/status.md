@@ -122,14 +122,22 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   repository, so GitHub rechecks access every time. Private source comes from the contents API, so the
   token only goes to GitHub's API. A public row that went private is converted, and other users' saved
   copies are removed. Checked on the real database: conversion, a second owner refused, two racing
-  imports giving one row.
+  imports giving one row. Proven on the live site on 2026-11-09 with a real private repository.
+- 06 Webhooks arrive at `/api/github/webhook`, checked against `GITHUB_WEBHOOK_SECRET` before anything
+  is read. A push to the default branch starts an analysis, and a repeated delivery finds the same run.
+  Uninstalls, suspensions, removed repositories, renames, deletions and visibility changes update the
+  database. Each Installation now keeps the repositories its user was checked against when connecting
+  (`verified_repository_ids`), and nothing else opens through it, so an organization owner widening an
+  Installation can't expose a repository the user can't see. Checked on the real database (9 checks)
+  and with signed and unsigned deliveries to a local server.
 
-Last results: 164 engine tests, 31 CLI tests, 456 web tests and 16 database tests pass.
+Last results: 164 engine tests, 31 CLI tests, 484 web tests and 16 database tests pass.
 
 ## Next
 
-1. Open a private repository on the live site, to finish ticket 05.
-2. Ticket 06: webhooks.
+1. Connect GitHub again once, so the existing Installation gets its checked list. Then push to a
+   private repository and watch it analyze.
+2. Ticket 07: analyze only what changed.
 3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 

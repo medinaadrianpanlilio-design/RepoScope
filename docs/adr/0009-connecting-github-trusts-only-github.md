@@ -17,6 +17,7 @@ don't say whether the install page sends back our `state`. So nothing in that ad
 - **First to connect owns it.** A second account is told the installation is taken. See
   `docs/adr/0008`.
 
-What this doesn't cover yet: an organization owner can widen an installation after it's connected.
-Webhooks see that, but can't check the user without a fresh token, so ticket 06 has to ask the user to
-connect again.
+- **Only checked repositories open.** The repositories that passed the check are stored on the
+  Installation. An organization owner can add more on GitHub later, and a webhook can't recheck the
+  user without a fresh token, so those wait, marked "Connect again", until the user connects and is
+  checked again. This holds even if a webhook never arrives.

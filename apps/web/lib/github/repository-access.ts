@@ -4,7 +4,7 @@ import { fetchRepositoryMetadata, type RepositoryMetadata } from "./client";
 import { installationForAccount, installationOf, openTokenSource } from "./installation-tokens";
 import { privateReader, publicReader, type RepositoryReader } from "./reader";
 
-export type AccessError = TokenError | "rate_limited" | "not_found";
+export type AccessError = TokenError | "rate_limited" | "not_found" | "unverified";
 
 export type Access = { ok: true; reader: RepositoryReader } | { ok: false; error: AccessError };
 
@@ -28,6 +28,9 @@ export async function openRepository(repository: Stored, userId: string | null):
   // The server client bypasses Row Level Security, so this lookup is filtered by the user.
   const installation = await installationOf(userId, repository.installation_id);
   if (!installation) return { ok: false, error: "not_found" };
+  if (!installation.verified_repository_ids.includes(repository.github_id)) {
+    return { ok: false, error: "unverified" };
+  }
 
   const issued = await openTokenSource(installation, { repositoryIds: [repository.github_id] })();
   if (!issued.ok) return { ok: false, error: issued.error };
@@ -57,7 +60,13 @@ export async function findPrivateRepository(
     allowPrivate: true,
   });
   if (!lookup.ok) return { ok: false, error: lookup.error };
-  return { ok: true, found: { repository: lookup.repository, installationId: installation.id } };
+
+  const { repository } = lookup;
+  // Added on GitHub after the user was checked, so it may be one they can't see.
+  if (repository.isPrivate && !installation.verified_repository_ids.includes(repository.githubId)) {
+    return { ok: false, error: "unverified" };
+  }
+  return { ok: true, found: { repository, installationId: installation.id } };
 }
 
 type Failure = { code: string; message: string; status: 403 | 404 | 429 | 502 | 503 };
@@ -73,6 +82,13 @@ export function describeAccess(error: AccessError | "not_connected"): Failure {
         message:
           "We couldn't find that repository. If it's private, connect its GitHub account on your dashboard first.",
         status: 404,
+      };
+    case "unverified":
+      return {
+        code: "github_unverified",
+        message:
+          "This repository was given to RepoScope on GitHub after you connected. Connect GitHub again from your dashboard to use it.",
+        status: 403,
       };
     case "revoked":
       return {

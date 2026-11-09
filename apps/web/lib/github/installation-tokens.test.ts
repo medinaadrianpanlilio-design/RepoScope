@@ -41,6 +41,7 @@ const active = {
   github_installation_id: 42,
   suspended_at: null,
   revoked_at: null,
+  verified_repository_ids: [],
 };
 
 const github = vi.fn<typeof fetch>();

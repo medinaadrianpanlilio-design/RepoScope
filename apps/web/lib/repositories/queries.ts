@@ -28,7 +28,14 @@ export type SavedRepository = Repository & { saved_at: string; analysis_label: s
 const COLUMNS =
   "id, owner, name, full_name, github_url, description, default_branch, primary_language, created_at, source, remote_full_name, github_id, installation_id, is_private";
 
-export async function upsertRepository(repository: RepositoryMetadata): Promise<string> {
+/**
+ * Stores a public repository. GitHub has just said it's public, so a row that was private before
+ * returns to the shared catalog, in case the webhook saying so never arrived.
+ */
+export async function upsertRepository(
+  repository: RepositoryMetadata,
+  retried = false,
+): Promise<string> {
   const { data, error } = await createAdminClient()
     .from("repositories")
     .upsert(
@@ -49,8 +56,26 @@ export async function upsertRepository(repository: RepositoryMetadata): Promise<
     .select("id")
     .single();
 
+  if (error?.code === "23514" && !repository.isPrivate && !retried) {
+    await makeRepositoryPublic(repository.githubId);
+    return upsertRepository(repository, true);
+  }
   if (error) throw new Error(`Could not store repository: ${error.code}`);
   return data.id;
+}
+
+/**
+ * The repository is now public on GitHub, so its row returns to the shared catalog with its
+ * results. Only GitHub can say that: a signed webhook, or a lookup with the server's token, which
+ * refuses private repositories.
+ */
+export async function makeRepositoryPublic(githubId: number, fields: Record<string, unknown> = {}) {
+  const { error } = await createAdminClient()
+    .from("repositories")
+    .update({ ...fields, is_private: false, owner_user_id: null, installation_id: null })
+    .eq("github_id", githubId)
+    .not("owner_user_id", "is", null);
+  if (error) throw new Error(`Could not make repository public: ${error.code}`);
 }
 
 /**

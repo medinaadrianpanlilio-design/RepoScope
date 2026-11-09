@@ -7,9 +7,11 @@ export type Installation = {
   github_installation_id: number;
   suspended_at: string | null;
   revoked_at: string | null;
+  /** Checked against the user when they connected. Nothing else is opened through it. */
+  verified_repository_ids: number[];
 };
 
-const COLUMNS = "id, github_installation_id, suspended_at, revoked_at";
+const COLUMNS = "id, github_installation_id, suspended_at, revoked_at, verified_repository_ids";
 
 /** The server client bypasses Row Level Security, so the filter on user_id is the access check. */
 export async function installationOf(userId: string, id: string): Promise<Installation | null> {

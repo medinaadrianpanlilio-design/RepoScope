@@ -1,9 +1,7 @@
-import { after, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiData, apiError } from "@/lib/api";
-import { claimRun } from "@/lib/analysis/claim";
-import { runPipeline } from "@/lib/analysis/pipeline";
-import { runStore, runWriter } from "@/lib/analysis/store";
+import { startAnalysis } from "@/lib/analysis/start";
 import { getOptionalUser } from "@/lib/auth";
 import { describeAccess, openRepository } from "@/lib/github/repository-access";
 import { allowRequest } from "@/lib/rate-limit";
@@ -47,16 +45,7 @@ export async function POST(
         : apiError("github_unavailable", "We couldn't read this repository from GitHub.", 502);
     }
 
-    const { run, start } = await claimRun(runStore(id, commit.sha));
-
-    if (start) {
-      after(() =>
-        runPipeline({
-          ...runWriter(run.id),
-          download: () => reader.download(commit.sha),
-        }),
-      );
-    }
+    const { run, start } = await startAnalysis(id, commit.sha, reader);
 
     return apiData({ analysisId: run.id, commitSha: commit.sha, started: start }, 202);
   } catch (error) {

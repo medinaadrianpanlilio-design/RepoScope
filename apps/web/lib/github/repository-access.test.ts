@@ -17,7 +17,13 @@ vi.mock("./installation-tokens", () => ({
 
 import { describeAccess, findPrivateRepository, openRepository } from "./repository-access";
 
-const installation = { id: "inst", github_installation_id: 42, suspended_at: null, revoked_at: null };
+const installation = {
+  id: "inst",
+  github_installation_id: 42,
+  suspended_at: null,
+  revoked_at: null,
+  verified_repository_ids: [7],
+};
 const privateRow = { owner: "me", name: "secret", github_id: 7, installation_id: "inst" };
 const publicRow = { owner: "vercel", name: "next.js", github_id: 1, installation_id: null };
 const sha = "c".repeat(40);
@@ -72,6 +78,13 @@ describe("openRepository", () => {
     expect(sentAuthorization()).toBe("Bearer ghs_job");
   });
 
+  it("refuses a repository added on GitHub after the user was checked, without a token", async () => {
+    tokens.installationOf.mockResolvedValue({ ...installation, verified_repository_ids: [8] });
+
+    expect(await openRepository(privateRow, "owner")).toEqual({ ok: false, error: "unverified" });
+    expect(tokens.issue).not.toHaveBeenCalled();
+  });
+
   it("passes on why GitHub refused, such as the repository being removed from the App", async () => {
     tokens.installationOf.mockResolvedValue(installation);
     tokens.issue.mockResolvedValue({ ok: false, error: "no_access" });
@@ -115,6 +128,23 @@ describe("findPrivateRepository", () => {
     expect(sentAuthorization()).toBe("Bearer ghs_job");
   });
 
+  it("refuses a private repository added after the user was checked", async () => {
+    tokens.installationForAccount.mockResolvedValue({ ...installation, verified_repository_ids: [] });
+    github.mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+
+    expect(await findPrivateRepository("owner", "me", "secret")).toEqual({
+      ok: false,
+      error: "unverified",
+    });
+  });
+
+  it("lets a public repository through even if it wasn't checked", async () => {
+    tokens.installationForAccount.mockResolvedValue({ ...installation, verified_repository_ids: [] });
+    github.mockResolvedValue(new Response(JSON.stringify({ ...body, private: false }), { status: 200 }));
+
+    expect(await findPrivateRepository("owner", "me", "secret")).toMatchObject({ ok: true });
+  });
+
   it("reports a repository the installation can't see as not found", async () => {
     tokens.installationForAccount.mockResolvedValue(installation);
     github.mockResolvedValue(new Response("{}", { status: 404 }));
@@ -140,6 +170,7 @@ describe("describeAccess", () => {
   it.each([
     "not_found",
     "not_connected",
+    "unverified",
     "revoked",
     "suspended",
     "no_access",

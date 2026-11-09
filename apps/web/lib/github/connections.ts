@@ -16,8 +16,15 @@ import { openTokenSource } from "./installation-tokens";
 
 const MAX_INSTALLATIONS = 20;
 
-/** An installation belongs to whoever connected it first. Nobody else can take it over. */
-async function claim(userId: string, installation: UserInstallation): Promise<LinkOutcome> {
+/**
+ * An installation belongs to whoever connected it first. Nobody else can take it over. The
+ * repositories just checked against the user are the only ones RepoScope will open through it.
+ */
+async function claim(
+  userId: string,
+  installation: UserInstallation,
+  verifiedIds: number[],
+): Promise<LinkOutcome> {
   const db = createAdminClient();
   const { data: existing, error } = await db
     .from("github_installations")
@@ -31,6 +38,7 @@ async function claim(userId: string, installation: UserInstallation): Promise<Li
     account_login: installation.accountLogin,
     account_type: installation.accountType,
     suspended_at: installation.suspendedAt,
+    verified_repository_ids: verifiedIds,
     updated_at: new Date().toISOString(),
   };
 
@@ -82,7 +90,12 @@ async function consider(
     visible.items,
     reached.complete && visible.complete,
   );
-  return decision === "link" ? claim(userId, installation) : decision;
+  if (decision !== "link") return decision;
+  return claim(
+    userId,
+    installation,
+    reached.items.map((repository) => repository.githubId),
+  );
 }
 
 /** Links every installation the user may have, checked with their own short-lived token. */
@@ -105,7 +118,8 @@ export type Connection = {
   accountType: "User" | "Organization";
   suspendedAt: string | null;
   revokedAt: string | null;
-  repositories: ReachableRepository[];
+  /** Each one says whether it passed the check when the user connected. */
+  repositories: (ReachableRepository & { verified: boolean })[];
   complete: boolean;
   problem: TokenError | "rate_limited" | null;
 };
@@ -117,6 +131,7 @@ type InstallationRow = {
   account_type: "User" | "Organization";
   suspended_at: string | null;
   revoked_at: string | null;
+  verified_repository_ids: number[];
 };
 
 async function describe(row: InstallationRow): Promise<Connection> {
@@ -135,14 +150,22 @@ async function describe(row: InstallationRow): Promise<Connection> {
 
   const reached = await installationRepositories(issued.token);
   if (!reached.ok) return { ...base, problem: reached.error };
-  return { ...base, repositories: reached.items, complete: reached.complete, problem: null };
+
+  const verified = new Set(row.verified_repository_ids);
+  const repositories = reached.items.map((repository) => ({
+    ...repository,
+    verified: verified.has(repository.githubId),
+  }));
+  return { ...base, repositories, complete: reached.complete, problem: null };
 }
 
 /** The server client bypasses Row Level Security, so the filter on user_id is the access check. */
 export async function listConnections(userId: string): Promise<Connection[]> {
   const { data, error } = await createAdminClient()
     .from("github_installations")
-    .select("id, github_installation_id, account_login, account_type, suspended_at, revoked_at")
+    .select(
+      "id, github_installation_id, account_login, account_type, suspended_at, revoked_at, verified_repository_ids",
+    )
     .eq("user_id", userId)
     .order("created_at")
     .overrideTypes<InstallationRow[], { merge: false }>();

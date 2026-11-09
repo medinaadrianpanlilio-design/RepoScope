@@ -11,8 +11,9 @@ analysis, but every read would depend on keeping that table correct, and a mista
 - **A second person can't connect the same account.** A teammate on an organization's Installation is
   refused for now. Allowing it later means changing `github_installations` and how webhooks find a user.
 - **The database keeps the shape honest.** A row is private exactly when it has an owner, and its owner
-  must match its Installation's user. A public import can't reopen a private row by mistake: the update
-  is refused, even for the server.
+  must match its Installation's user. A plain public upsert can't reopen a private row: the update is
+  refused, even for the server. Only GitHub saying the repository is public reopens it: a signed
+  `publicized` webhook, or a lookup with the server's token, which never returns private repositories.
 - **Only the server writes Installations.** Writing a row would claim an Installation, so users can read
   theirs and nothing more.
 - **Removing an Installation removes its Repositories and their results.** Revoked access is recorded

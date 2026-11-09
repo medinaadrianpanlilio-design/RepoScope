@@ -91,7 +91,17 @@ function ConnectionCard({ connection }: { connection: Connection }) {
                 >
                   {repository.isPrivate ? "Private" : "Public"}
                 </span>
-                <OpenRepository fullName={repository.fullName} />
+                {repository.verified || !repository.isPrivate ? (
+                  <OpenRepository fullName={repository.fullName} />
+                ) : (
+                  <a
+                    href="/api/github/callback"
+                    title="Added on GitHub after you connected. Connecting again checks you can see it."
+                    className="shrink-0 rounded border border-line px-2 py-0.5 text-xs hover:border-accent hover:text-accent"
+                  >
+                    Connect again
+                  </a>
+                )}
               </li>
             ))}
           </ul>
