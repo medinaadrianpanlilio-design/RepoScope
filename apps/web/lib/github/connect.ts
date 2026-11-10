@@ -286,6 +286,7 @@ export const CONNECT_CODES = [
   "rate_limited",
   "not_configured",
   "failed",
+  "disconnected",
 ] as const;
 
 export type ConnectCode = (typeof CONNECT_CODES)[number];
@@ -328,6 +329,10 @@ const MESSAGES: Record<ConnectCode, { tone: "good" | "info" | "problem"; text: s
     text: "The GitHub App isn't set up correctly on this server, so GitHub can't be connected.",
   },
   failed: { tone: "problem", text: "We couldn't reach GitHub. Try again in a minute." },
+  disconnected: {
+    tone: "info",
+    text: "Disconnected. RepoScope removed that account's private repositories and their analyses. The App stays installed on GitHub until you uninstall it there.",
+  },
 };
 
 /** The dashboard reads the outcome from its address, so only known codes are shown. */

@@ -7,6 +7,8 @@ const LIMITS = {
   analyze: { limit: 10, windowSeconds: 3600 },
   source: { limit: 300, windowSeconds: 3600 },
   github: { limit: 30, windowSeconds: 3600 },
+  // Every repository page asks once, so this is generous, but it still spends GitHub's quota.
+  freshness: { limit: 120, windowSeconds: 3600 },
 } as const;
 
 /** Returns true when the request may go ahead. */
