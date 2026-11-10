@@ -114,7 +114,7 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   `/api/github/callback`. See `docs/adr/0009`. Proven on the live site on 2026-11-09: the owner's
   installation linked after the real code exchange, user-side checks and an installation token.
 - Once the App is installed, Connect GitHub leads to GitHub's settings, which don't come back. Opening
-  `/api/github/callback` directly finishes connecting. Ticket 08 adds a link for this.
+  `/api/github/callback` directly finishes connecting. Ticket 08 added a link for this.
 - 05 Private repositories import, analyze and show source. A pasted link that the server can't see is
   looked up through the user's own Installation, and the dashboard's GitHub list has an Open button.
   Analysis, source and found conventions all read through one `RepositoryReader`, so public and private
@@ -135,17 +135,28 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   the commit's file list and fetches and parses only files whose hash changed. Resolving and cycles
   still run over everything, so results equal a full analysis. Anything uncertain reads the whole
   archive instead, including more than 300 files to fetch. Matched a full analysis exactly on six real
-  commit ranges, including zod (521 files, 19 parsed). See `docs/adr/0010`. Migration
-  `20261112000000_analysis_snapshots.sql` must be applied before Snapshots are kept; until then every
-  run reads the archive as before.
+  commit ranges, including zod (521 files, 19 parsed). See `docs/adr/0010`. Proven on the live site on
+  2026-11-10: after the migration, a second push to a private repository started from the first one's
+  Snapshot and reused its files instead of reading the archive, with the same results.
+- 08 The dashboard shows each connected account's status (connected, suspended, uninstalled or needs
+  attention), its permissions, a Manage on GitHub link and Disconnect, plus each imported private
+  repository's last synced commit. Disconnect forgets the Installation, and its private repositories and
+  analyses go with it; the App stays installed on GitHub until its owner removes it there. A Finish
+  connecting link sits under Connect GitHub. Opening a GitHub repository asks GitHub for the latest
+  commit (`/api/repositories/[id]/freshness`) and offers Sync when it's newer, or says plainly when the
+  repository can't be read. Not yet seen on the live site.
+- 09 MCP reads a private repository's stored knowledge with no GitHub credentials, so it now applies
+  the checks a fresh token would: the Installation is live, not suspended, and the repository was checked
+  against its user. Agents are told why when it fails. A private repository's convention files are named
+  for agents but never fetched. Checked through the real MCP route and database (7 checks, 5 of which
+  fail on the code before this change).
 
-Last results: 167 engine tests, 31 CLI tests, 509 web tests and 16 database tests pass.
+Last results: 167 engine tests, 31 CLI tests, 526 web tests and 23 database tests pass.
 
 ## Next
 
-1. Apply the Snapshot migration, then push twice to a repository and check the second run says it
-   reused files.
-2. Ticket 08: connection screens.
+1. Ticket 10: security review over Phase 8.
+2. Check tickets 08 and 09 on the live site.
 3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
