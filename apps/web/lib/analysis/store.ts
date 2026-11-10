@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { RunRecord } from "./claim";
 import type { AnalysisStats, RunStatus } from "./pipeline";
+import { decodeSnapshot, encodeSnapshot, type Snapshot } from "./snapshot";
 
 const CHUNK_SIZE = 500;
 const RUN_COLUMNS =
@@ -140,6 +141,34 @@ export function runWriter(runId: string) {
     async fail(message: string) {
       await updateRun({ status: "failed", error_message: message });
       await clearResults().catch(() => undefined);
+    },
+  };
+}
+
+/** One snapshot per repository: the latest analysis to finish replaces it. */
+export function snapshotStore(repositoryId: string, analysisId: string) {
+  const db = createAdminClient();
+
+  return {
+    async previous(): Promise<Snapshot | null> {
+      const { data, error } = await db
+        .from("analysis_snapshots")
+        .select("data")
+        .eq("repository_id", repositoryId)
+        .maybeSingle();
+      if (error) throw new Error(`Could not load snapshot: ${error.code}`);
+      return data ? decodeSnapshot(data.data) : null;
+    },
+
+    async keep(snapshot: Snapshot) {
+      const { error } = await db.from("analysis_snapshots").upsert({
+        repository_id: repositoryId,
+        analysis_id: analysisId,
+        commit_sha: snapshot.commitSha,
+        data: encodeSnapshot(snapshot),
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw new Error(`Could not keep snapshot: ${error.code}`);
     },
   };
 }

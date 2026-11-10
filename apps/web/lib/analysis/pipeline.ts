@@ -1,20 +1,34 @@
 import {
-  analyzeFileSet,
+  analyzePrepared,
   ArchiveError,
   buildFileSet,
   extractTarGz,
+  prepareSource,
   summarizeResult,
   type AnalysisResult,
   type FileSetOptions,
   type LimitExceeded,
+  type PreparedFileSet,
   type ResultSummary,
 } from "@reposcope/engine";
 import type { ArchiveDownload } from "@/lib/github/archive";
 import { ANALYSIS_VERSION } from "./claim";
+import { prepareIncremental, snapshotOf, type IncrementalSource, type Snapshot } from "./snapshot";
 
 export type RunStatus = "fetching" | "scanning" | "parsing" | "saving";
 
-export type AnalysisStats = ResultSummary & { version: string };
+export type AnalysisStats = ResultSummary & {
+  version: string;
+  /** Set when only changed files were read, starting from the analysis of `from`. */
+  incremental?: { from: string; parsed: number; reused: number };
+};
+
+/** Lets a run start from the last analysis's snapshot instead of the whole archive. */
+export type SnapshotDeps = IncrementalSource & {
+  commitSha: string;
+  previous: () => Promise<Snapshot | null>;
+  keep: (snapshot: Snapshot) => Promise<void>;
+};
 
 export type PipelineDeps = {
   download: () => Promise<ArchiveDownload>;
@@ -22,6 +36,7 @@ export type PipelineDeps = {
   save: (result: AnalysisResult) => Promise<void>;
   complete: (stats: AnalysisStats) => Promise<void>;
   fail: (message: string) => Promise<void>;
+  snapshots?: SnapshotDeps;
 };
 
 const GENERIC_FAILURE = "The analysis failed unexpectedly. Try again in a moment.";
@@ -30,24 +45,60 @@ const GENERIC_FAILURE = "The analysis failed unexpectedly. Try again in a moment
 export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = {}): Promise<void> {
   try {
     await deps.setStatus("fetching");
-    const download = await deps.download();
-    if (!download.ok) return await deps.fail(describeDownloadFailure(download));
+    const incremental = deps.snapshots ? await tryIncremental(deps.snapshots, options) : null;
 
-    await deps.setStatus("scanning");
-    const { files } = extractTarGz(download.bytes);
-    const fileSet = buildFileSet(files, options);
+    let prepared: PreparedFileSet;
+    let snapshot: Snapshot | null = null;
+    if (incremental?.ok) {
+      ({ prepared, snapshot } = incremental);
+    } else {
+      const download = await deps.download();
+      if (!download.ok) return await deps.fail(describeDownloadFailure(download));
 
-    if (fileSet.limitExceeded) return await deps.fail(describeLimit(fileSet.limitExceeded));
-    if (fileSet.sources.length === 0) {
-      return await deps.fail("This repository has no JavaScript or TypeScript files to analyze.");
+      await deps.setStatus("scanning");
+      const { files } = extractTarGz(download.bytes);
+      const fileSet = buildFileSet(files, options);
+
+      if (fileSet.limitExceeded) return await deps.fail(describeLimit(fileSet.limitExceeded));
+      if (fileSet.sources.length === 0) {
+        return await deps.fail("This repository has no JavaScript or TypeScript files to analyze.");
+      }
+
+      await deps.setStatus("parsing");
+      prepared = { ...fileSet, sources: fileSet.sources.map(prepareSource) };
+      if (deps.snapshots) {
+        snapshot = snapshotOf(deps.snapshots.commitSha, files, fileSet, prepared.sources);
+      }
     }
 
-    await deps.setStatus("parsing");
-    const result = analyzeFileSet(fileSet);
+    const result = analyzePrepared(prepared);
 
     await deps.setStatus("saving");
     await deps.save(result);
-    await deps.complete({ ...summarizeResult(result), version: ANALYSIS_VERSION });
+    if (snapshot) {
+      // The results are saved either way. Without a snapshot the next run reads the archive.
+      await deps
+        .snapshots!.keep(snapshot)
+        .catch((error) =>
+          console.error(
+            "Could not keep snapshot:",
+            error instanceof Error ? error.message : "unknown",
+          ),
+        );
+    }
+    await deps.complete({
+      ...summarizeResult(result),
+      version: ANALYSIS_VERSION,
+      ...(incremental?.ok
+        ? {
+            incremental: {
+              from: incremental.from,
+              parsed: incremental.parsed,
+              reused: incremental.reused,
+            },
+          }
+        : {}),
+    });
   } catch (error) {
     if (error instanceof ArchiveError) {
       return await deps.fail(
@@ -58,6 +109,26 @@ export async function runPipeline(deps: PipelineDeps, options: FileSetOptions = 
     }
     console.error("Analysis failed:", error instanceof Error ? error.message : "unknown error");
     await deps.fail(GENERIC_FAILURE);
+  }
+}
+
+/** Any doubt, or any error, means reading the archive instead, which is always right. */
+async function tryIncremental(snapshots: SnapshotDeps, options: FileSetOptions) {
+  try {
+    const previous = await snapshots.previous();
+    if (!previous) return null;
+    const incremental = await prepareIncremental(previous, snapshots.commitSha, snapshots, options);
+    if (!incremental.ok) {
+      console.info(`Reading the whole archive: ${incremental.reason}.`);
+      return null;
+    }
+    return { ...incremental, from: previous.commitSha };
+  } catch (error) {
+    console.error(
+      "Incremental analysis failed:",
+      error instanceof Error ? error.message : "unknown",
+    );
+    return null;
   }
 }
 

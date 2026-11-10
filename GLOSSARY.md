@@ -8,6 +8,9 @@ _Avoid_: project, repo entry
 **Analysis run:** one pass of the engine over one commit of a Repository.
 _Avoid_: scan, job, index
 
+**Snapshot:** what the latest Analysis run of a Repository keeps so the next one parses only changed
+files: each source file's parse result and content hash, never its source.
+
 **Working copy:** an Analysis run over a local folder that includes uncommitted changes.
 
 **Local folder:** a Repository read from disk. Its source never leaves the user's PC.

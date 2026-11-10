@@ -131,13 +131,22 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   Installation can't expose a repository the user can't see. Checked on the real database (9 checks)
   and with signed and unsigned deliveries to a local server. Proven on the live site on 2026-11-09: a
   push to a private repository's main branch was analyzed on its own within seconds.
+- 07 An analysis keeps a Snapshot (parse results and content hashes, no source), and the next one reads
+  the commit's file list and fetches and parses only files whose hash changed. Resolving and cycles
+  still run over everything, so results equal a full analysis. Anything uncertain reads the whole
+  archive instead, including more than 300 files to fetch. Matched a full analysis exactly on six real
+  commit ranges, including zod (521 files, 19 parsed). See `docs/adr/0010`. Migration
+  `20261112000000_analysis_snapshots.sql` must be applied before Snapshots are kept; until then every
+  run reads the archive as before.
 
-Last results: 164 engine tests, 31 CLI tests, 484 web tests and 16 database tests pass.
+Last results: 167 engine tests, 31 CLI tests, 509 web tests and 16 database tests pass.
 
 ## Next
 
-1. Ticket 07: analyze only what changed.
-2. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Apply the Snapshot migration, then push twice to a repository and check the second run says it
+   reused files.
+2. Ticket 08: connection screens.
+3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.

@@ -1,4 +1,4 @@
-import type { FileSet, InputFile, SkipReason, SkippedFile, SourceFile } from "./types.ts";
+import type { FileSet, InputFile, LimitExceeded, SkipReason, SkippedFile, SourceFile } from "./types.ts";
 
 export type FileSetOptions = {
   excludedDirectories?: string[];
@@ -35,8 +35,8 @@ const MINIFIED_LINE_LENGTH = 5000;
 export function buildFileSet(inputs: InputFile[], options: FileSetOptions = {}): FileSet {
   const excluded = new Set(options.excludedDirectories ?? DEFAULT_EXCLUDED_DIRECTORIES);
   const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
-  const maxSourceFiles = options.maxSourceFiles ?? DEFAULT_MAX_SOURCE_FILES;
-  const maxTotalBytes = options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES;
+  const maxSourceFiles = options.maxSourceFiles;
+  const maxTotalBytes = options.maxTotalBytes;
 
   const sources: SourceFile[] = [];
   const configs = new Map<string, string>();
@@ -47,50 +47,90 @@ export function buildFileSet(inputs: InputFile[], options: FileSetOptions = {}):
   let sourceBytes = 0;
 
   for (const { path, bytes } of inputs) {
-    if (!isSafePath(path)) continue;
-
-    if (isInExcludedDirectory(path, excluded)) {
+    const place = placePath(path, bytes.length, { excluded, maxFileBytes });
+    if (place.kind === "unsafe") continue;
+    if (place.kind === "excluded") {
       skip(path, "excluded_directory");
       continue;
     }
 
     allPaths.add(path);
 
-    if (LOCK_FILE.test(path)) {
-      skip(path, "lock_file");
-      continue;
-    }
-
-    if (CONFIG_FILE.test(path)) {
-      if (bytes.length <= maxFileBytes) configs.set(path, decoder.decode(bytes));
-      continue;
-    }
-
-    if (!SOURCE_EXTENSION.test(path)) continue;
-
-    if (bytes.length > maxFileBytes) {
-      skip(path, "too_large");
-    } else if (isBinary(bytes)) {
-      skip(path, "binary");
-    } else {
-      const content = decoder.decode(bytes);
-      if (MINIFIED_NAME.test(path) || isMinified(content)) {
-        skip(path, "minified");
-      } else {
-        sources.push({ path, content, size: bytes.length });
+    if (place.kind === "skipped") skip(path, place.reason);
+    else if (place.kind === "config") configs.set(path, decoder.decode(bytes));
+    else if (place.kind === "content") {
+      const read = readContent(path, bytes);
+      if (read.kind === "skipped") skip(path, read.reason);
+      else {
+        sources.push({ path, content: read.content, size: bytes.length });
         sourceBytes += bytes.length;
       }
     }
   }
 
-  const limitExceeded =
-    sources.length > maxSourceFiles
-      ? { kind: "source_files" as const, limit: maxSourceFiles, actual: sources.length }
-      : sourceBytes > maxTotalBytes
-        ? { kind: "total_bytes" as const, limit: maxTotalBytes, actual: sourceBytes }
-        : null;
+  return {
+    sources,
+    configs,
+    allPaths,
+    skipped,
+    limitExceeded: checkLimits(sources.length, sourceBytes, { maxSourceFiles, maxTotalBytes }),
+  };
+}
 
-  return { sources, configs, allPaths, skipped, limitExceeded };
+export type PathPlace =
+  | { kind: "unsafe" }
+  | { kind: "excluded" }
+  | { kind: "skipped"; reason: "lock_file" | "too_large" }
+  | { kind: "config" }
+  | { kind: "other" }
+  /** A source file, which needs its bytes to decide whether it can be read. */
+  | { kind: "content" };
+
+/**
+ * Decides what a file is from its path and size alone. Paired with readContent, it makes the
+ * same decisions as buildFileSet, so a set can be rebuilt from a file list and a few changed files.
+ */
+export function placePath(
+  path: string,
+  size: number,
+  options: { excluded?: Set<string>; maxFileBytes?: number } = {},
+): PathPlace {
+  const excluded = options.excluded ?? new Set(DEFAULT_EXCLUDED_DIRECTORIES);
+  const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
+
+  if (!isSafePath(path)) return { kind: "unsafe" };
+  if (isInExcludedDirectory(path, excluded)) return { kind: "excluded" };
+  if (LOCK_FILE.test(path)) return { kind: "skipped", reason: "lock_file" };
+  if (CONFIG_FILE.test(path)) return size <= maxFileBytes ? { kind: "config" } : { kind: "other" };
+  if (!SOURCE_EXTENSION.test(path)) return { kind: "other" };
+  if (size > maxFileBytes) return { kind: "skipped", reason: "too_large" };
+  return { kind: "content" };
+}
+
+export function readContent(
+  path: string,
+  bytes: Uint8Array,
+): { kind: "source"; content: string } | { kind: "skipped"; reason: "binary" | "minified" } {
+  if (isBinary(bytes)) return { kind: "skipped", reason: "binary" };
+  const content = new TextDecoder().decode(bytes);
+  if (MINIFIED_NAME.test(path) || isMinified(content)) return { kind: "skipped", reason: "minified" };
+  return { kind: "source", content };
+}
+
+export function checkLimits(
+  sourceFiles: number,
+  sourceBytes: number,
+  options: { maxSourceFiles?: number; maxTotalBytes?: number } = {},
+): LimitExceeded | null {
+  const maxSourceFiles = options.maxSourceFiles ?? DEFAULT_MAX_SOURCE_FILES;
+  const maxTotalBytes = options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES;
+  if (sourceFiles > maxSourceFiles) {
+    return { kind: "source_files", limit: maxSourceFiles, actual: sourceFiles };
+  }
+  if (sourceBytes > maxTotalBytes) {
+    return { kind: "total_bytes", limit: maxTotalBytes, actual: sourceBytes };
+  }
+  return null;
 }
 
 function isSafePath(path: string): boolean {

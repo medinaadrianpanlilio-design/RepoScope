@@ -8,6 +8,9 @@ import type {
   FileMetrics,
   FileSet,
   LanguageStat,
+  ParsedFile,
+  SkippedFile,
+  SourceFile,
   UnresolvedImport,
 } from "./types.ts";
 
@@ -22,11 +25,44 @@ const LANGUAGES: Record<string, string> = {
   jsx: "JSX",
 };
 
+/** One source file after parsing. Parsing reads only the file itself, so it can be kept and reused. */
+export type PreparedSource = {
+  path: string;
+  size: number;
+  lines: number;
+  parsed: ParsedFile;
+};
+
+/** A file set whose sources are already parsed. */
+export type PreparedFileSet = {
+  sources: PreparedSource[];
+  configs: Map<string, string>;
+  allPaths: Set<string>;
+  skipped: SkippedFile[];
+};
+
+export function prepareSource({ path, content, size }: SourceFile): PreparedSource {
+  return { path, size, lines: countLines(content), parsed: parseFile(path, content) };
+}
+
 export function analyzeFileSet(fileSet: FileSet): AnalysisResult {
+  return analyzePrepared({ ...fileSet, sources: fileSet.sources.map(prepareSource) });
+}
+
+/**
+ * Everything after parsing: resolving, counting and finding cycles. It runs over the whole set
+ * every time, because a change in one file can change what another file's imports point to.
+ * Inputs are sorted first, so the result doesn't depend on the order files arrived in.
+ */
+export function analyzePrepared(prepared: PreparedFileSet): AnalysisResult {
+  const sources = [...prepared.sources].sort((a, b) => compare(a.path, b.path));
+  const configs = new Map([...prepared.configs].sort(([a], [b]) => compare(a, b)));
+  const allPaths = new Set([...prepared.allPaths].sort(compare));
+
   const resolver = createResolver({
-    sourcePaths: new Set(fileSet.sources.map((file) => file.path)),
-    allPaths: fileSet.allPaths,
-    configs: fileSet.configs,
+    sourcePaths: new Set(sources.map((file) => file.path)),
+    allPaths,
+    configs,
   });
 
   const files = new Map<string, FileMetrics>();
@@ -35,14 +71,12 @@ export function analyzeFileSet(fileSet: FileSet): AnalysisResult {
   const unanalyzable: AnalysisResult["unanalyzable"] = [];
   const externalPackages = new Set<string>();
 
-  for (const { path, content, size } of fileSet.sources) {
-    const parsed = parseFile(path, content);
-
+  for (const { path, size, lines, parsed } of sources) {
     files.set(path, {
       path,
       language: languageOf(path),
       size,
-      lines: countLines(content),
+      lines,
       incoming: 0,
       outgoing: 0,
       exports: parsed.exports,
@@ -79,7 +113,7 @@ export function analyzeFileSet(fileSet: FileSet): AnalysisResult {
   }
 
   const fileList = [...files.values()];
-  const directories = directoriesOf(fileSet.allPaths);
+  const directories = directoriesOf(allPaths);
 
   return {
     files: fileList,
@@ -87,18 +121,18 @@ export function analyzeFileSet(fileSet: FileSet): AnalysisResult {
     unresolved,
     unanalyzable,
     externalPackages: [...externalPackages].sort(),
-    otherFiles: [...fileSet.allPaths].filter((path) => !files.has(path)).sort(),
+    otherFiles: [...allPaths].filter((path) => !files.has(path)).sort(),
     cycles: findCycles(files.keys(), runtimeNeighbors),
     languages: languageStats(fileList),
-    directories: directoryStats(fileSet.allPaths),
+    directories: directoryStats(allPaths),
     totals: {
-      allFiles: fileSet.allPaths.size,
+      allFiles: allPaths.size,
       directories: directories.size,
       sourceFiles: fileList.length,
       lines: fileList.reduce((sum, file) => sum + file.lines, 0),
       internalDependencies: edgeList.length,
       unresolvedImports: unresolved.length,
-      skippedFiles: fileSet.skipped.length,
+      skippedFiles: prepared.skipped.length,
     },
   };
 }
@@ -160,4 +194,9 @@ function directoryStats(paths: Set<string>): DirectoryStat[] {
   return [...counts]
     .map(([path, files]) => ({ path, files }))
     .sort((a, b) => b.files - a.files || a.path.localeCompare(b.path));
+}
+
+/** Plain code-unit order, the same on every machine and locale. */
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }

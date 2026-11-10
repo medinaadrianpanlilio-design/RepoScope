@@ -1,6 +1,7 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import { runPipeline, type PipelineDeps } from "./pipeline";
+import { runPipeline, type PipelineDeps, type SnapshotDeps } from "./pipeline";
+import { blobSha, type Snapshot } from "./snapshot";
 
 function tarGz(files: Record<string, string>): Uint8Array {
   const blocks: Buffer[] = [];
@@ -156,5 +157,102 @@ describe("runPipeline", () => {
     expect(d.fail).toHaveBeenCalledOnce();
     expect(JSON.stringify(vi.mocked(d.fail).mock.calls)).not.toContain("secret-host");
     expect(d.complete).not.toHaveBeenCalled();
+  });
+});
+
+describe("runPipeline with snapshots", () => {
+  const commitSha = "b".repeat(40);
+  const files = { "a.ts": 'import "./b";\n', "b.ts": "export const b = 1;\n" };
+  const bytes = Object.fromEntries(
+    Object.entries(files).map(([path, text]) => [path, new TextEncoder().encode(text)]),
+  );
+
+  function snapshots(previous: Snapshot | null): SnapshotDeps & { kept: Snapshot[] } {
+    const kept: Snapshot[] = [];
+    return {
+      kept,
+      commitSha,
+      previous: vi.fn(async () => previous),
+      keep: vi.fn(async (snapshot: Snapshot) => {
+        kept.push(snapshot);
+      }),
+      tree: vi.fn(async () => ({
+        ok: true as const,
+        entries: 2,
+        files: Object.entries(bytes).map(([path, b]) => ({ path, sha: blobSha(b), size: b.length })),
+      })),
+      blob: vi.fn(async (sha: string) => {
+        const found = Object.values(bytes).find((b) => blobSha(b) === sha);
+        return found ? { ok: true as const, bytes: found } : { ok: false as const, error: "not_found" as const };
+      }),
+    };
+  }
+
+  async function firstSnapshot() {
+    const s = snapshots(null);
+    const { d } = deps({ snapshots: s });
+    await runPipeline(d);
+    return s.kept[0]!;
+  }
+
+  it("reads the archive the first time, and keeps a snapshot for next time", async () => {
+    const s = snapshots(null);
+    const { d } = deps({ snapshots: s });
+    await runPipeline(d);
+
+    expect(d.download).toHaveBeenCalledOnce();
+    expect(s.kept[0]).toMatchObject({ commitSha, sources: [{ path: "a.ts" }, { path: "b.ts" }] });
+    expect(vi.mocked(d.complete).mock.calls[0]?.[0]).not.toHaveProperty("incremental");
+  });
+
+  it("starts from the last snapshot without downloading the archive", async () => {
+    const previous = { ...(await firstSnapshot()), commitSha: "a".repeat(40) };
+    const s = snapshots(previous);
+    const { d, statuses } = deps({ snapshots: s });
+    await runPipeline(d);
+
+    expect(d.download).not.toHaveBeenCalled();
+    expect(s.blob).not.toHaveBeenCalled();
+    expect(statuses).toEqual(["fetching", "saving"]);
+    expect(vi.mocked(d.complete).mock.calls[0]?.[0]).toMatchObject({
+      incremental: { from: "a".repeat(40), parsed: 0, reused: 2 },
+      totals: { sourceFiles: 2, internalDependencies: 1 },
+    });
+    expect(s.kept[0]?.commitSha).toBe(commitSha);
+  });
+
+  it("falls back to the archive when the snapshot can't be used", async () => {
+    const previous = { ...(await firstSnapshot()), commitSha: "a".repeat(40) };
+    const s = snapshots(previous);
+    s.tree = vi.fn(async () => ({ ok: false as const, error: "upstream" as const }));
+    const { d } = deps({ snapshots: s });
+    await runPipeline(d);
+
+    expect(d.download).toHaveBeenCalledOnce();
+    expect(d.complete).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to the archive when loading the snapshot throws", async () => {
+    const s = snapshots(null);
+    s.previous = vi.fn(async () => {
+      throw new Error("database down");
+    });
+    const { d } = deps({ snapshots: s });
+    await runPipeline(d);
+
+    expect(d.download).toHaveBeenCalledOnce();
+    expect(d.complete).toHaveBeenCalledOnce();
+  });
+
+  it("still completes when the snapshot can't be kept", async () => {
+    const s = snapshots(null);
+    s.keep = vi.fn(async () => {
+      throw new Error("database down");
+    });
+    const { d } = deps({ snapshots: s });
+    await runPipeline(d);
+
+    expect(d.complete).toHaveBeenCalledOnce();
+    expect(d.fail).not.toHaveBeenCalled();
   });
 });
