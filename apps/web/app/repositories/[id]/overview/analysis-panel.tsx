@@ -125,22 +125,7 @@ export function AnalysisPanel({ repositoryId, run: initialRun, hasResults, autoS
 
   if (run?.status === "completed" || (hasResults && run?.status !== "failed")) {
     return (
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={start} disabled={starting} className="button-secondary gap-2">
-          <RefreshCw size={14} aria-hidden />
-          {starting ? "Checking GitHub…" : "Check for new commits"}
-        </button>
-        {notice && (
-          <p role="status" className="text-sm text-muted">
-            {notice}
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-      </div>
+      <SyncBar repositoryId={repositoryId} onSync={start} syncing={starting} notice={notice} error={error} />
     );
   }
 
@@ -166,5 +151,104 @@ export function AnalysisPanel({ repositoryId, run: initialRun, hasResults, autoS
         {starting ? "Starting…" : failed ? "Try again" : "Analyze repository"}
       </button>
     </section>
+  );
+}
+
+type Freshness =
+  | { state: "checking" }
+  | { state: "behind" | "current"; branch: string }
+  | { state: "unreadable" | "unchecked"; message: string };
+
+/** Answers that mean RepoScope can't read the repository at all, not that GitHub was busy. */
+const UNREADABLE = new Set([
+  "not_found",
+  "github_unverified",
+  "github_revoked",
+  "github_suspended",
+  "github_no_access",
+  "github_permissions",
+]);
+
+type SyncBarProps = {
+  repositoryId: string;
+  onSync: () => void;
+  syncing: boolean;
+  notice: string | null;
+  error: string | null;
+};
+
+/** GitHub doesn't retry failed webhooks, so opening a repository asks whether it's behind. */
+function SyncBar({ repositoryId, onSync, syncing, notice, error }: SyncBarProps) {
+  const [freshness, setFreshness] = useState<Freshness>({ state: "checking" });
+
+  useEffect(() => {
+    let stopped = false;
+    async function check() {
+      try {
+        const response = await fetch(`/api/repositories/${repositoryId}/freshness`, { cache: "no-store" });
+        const payload = await response.json();
+        if (stopped) return;
+        if (response.ok) {
+          const { behind, branch } = payload.data;
+          setFreshness({ state: behind ? "behind" : "current", branch });
+        } else {
+          const message = payload.error?.message ?? "We couldn't check GitHub for new commits.";
+          setFreshness({
+            state: UNREADABLE.has(payload.error?.code) ? "unreadable" : "unchecked",
+            message,
+          });
+        }
+      } catch {
+        if (!stopped) setFreshness({ state: "unchecked", message: "We couldn't check GitHub for new commits." });
+      }
+    }
+    void check();
+    return () => {
+      stopped = true;
+    };
+  }, [repositoryId]);
+
+  if (freshness.state === "unreadable") {
+    return (
+      <section role="status" className="mt-8 rounded-md border border-danger/60 bg-card p-4 text-sm">
+        <h2 className="font-medium text-danger">RepoScope can&apos;t read this repository right now</h2>
+        <p className="mt-1">{freshness.message}</p>
+        <p className="mt-1 text-muted">The results below are from the last analysis RepoScope could make.</p>
+      </section>
+    );
+  }
+
+  const behind = freshness.state === "behind";
+
+  return (
+    <div className="mt-8 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={onSync}
+        disabled={syncing}
+        className={`${behind ? "button-primary" : "button-secondary"} gap-2`}
+      >
+        <RefreshCw size={14} aria-hidden />
+        {syncing ? "Checking GitHub…" : "Sync"}
+      </button>
+      {!notice && !error && (
+        <p role="status" className={`text-sm ${behind ? "" : "text-muted"}`}>
+          {freshness.state === "checking" && "Checking GitHub for new commits…"}
+          {freshness.state === "behind" && `GitHub has newer commits on ${freshness.branch}. Sync to analyze them.`}
+          {freshness.state === "current" && `Up to date with ${freshness.branch} on GitHub.`}
+          {freshness.state === "unchecked" && freshness.message}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="text-sm text-muted">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

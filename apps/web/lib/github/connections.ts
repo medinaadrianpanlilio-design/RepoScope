@@ -12,6 +12,7 @@ import {
   type ReachableRepository,
   type UserInstallation,
 } from "./connect";
+import { syncedByGithubId, type Synced } from "./connection-view";
 import { openTokenSource } from "./installation-tokens";
 
 const MAX_INSTALLATIONS = 20;
@@ -116,10 +117,14 @@ export type Connection = {
   id: string;
   accountLogin: string;
   accountType: "User" | "Organization";
+  githubInstallationId: number;
   suspendedAt: string | null;
   revokedAt: string | null;
-  /** Each one says whether it passed the check when the user connected. */
-  repositories: (ReachableRepository & { verified: boolean })[];
+  /**
+   * Each one says whether it passed the check when the user connected, and, once imported as a
+   * private repository, its latest finished analysis.
+   */
+  repositories: (ReachableRepository & { verified: boolean; synced: Synced | null })[];
   complete: boolean;
   problem: TokenError | "rate_limited" | null;
 };
@@ -134,11 +139,12 @@ type InstallationRow = {
   verified_repository_ids: number[];
 };
 
-async function describe(row: InstallationRow): Promise<Connection> {
+async function describe(row: InstallationRow, synced: Map<number, Synced>): Promise<Connection> {
   const base = {
     id: row.id,
     accountLogin: row.account_login,
     accountType: row.account_type,
+    githubInstallationId: row.github_installation_id,
     suspendedAt: row.suspended_at,
     revokedAt: row.revoked_at,
     repositories: [],
@@ -155,13 +161,47 @@ async function describe(row: InstallationRow): Promise<Connection> {
   const repositories = reached.items.map((repository) => ({
     ...repository,
     verified: verified.has(repository.githubId),
+    synced: (repository.isPrivate && synced.get(repository.githubId)) || null,
   }));
   return { ...base, repositories, complete: reached.complete, problem: null };
 }
 
-/** The server client bypasses Row Level Security, so the filter on user_id is the access check. */
+type Db = ReturnType<typeof createAdminClient>;
+
+/** The user's imported private repositories, each with its latest finished analysis. */
+async function syncedRepositories(db: Db, userId: string, installationIds: string[]) {
+  const { data: rows, error } = await db
+    .from("repositories")
+    .select("id, github_id, installation_id")
+    .eq("owner_user_id", userId)
+    .in("installation_id", installationIds);
+  if (error) throw new Error(`Could not list private repositories: ${error.code}`);
+
+  const byInstallation = new Map<string, Map<number, Synced>>();
+  if (rows.length === 0) return byInstallation;
+
+  const { data: runs, error: runsError } = await db
+    .from("analysis_runs")
+    .select("repository_id, commit_sha, completed_at")
+    .in(
+      "repository_id",
+      rows.map((row) => row.id),
+    )
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false });
+  if (runsError) throw new Error(`Could not load analyses: ${runsError.code}`);
+
+  for (const id of installationIds) {
+    const own = rows.filter((row) => row.installation_id === id);
+    byInstallation.set(id, syncedByGithubId(own, runs));
+  }
+  return byInstallation;
+}
+
+/** The server client bypasses Row Level Security, so the filters on user_id are the access check. */
 export async function listConnections(userId: string): Promise<Connection[]> {
-  const { data, error } = await createAdminClient()
+  const db = createAdminClient();
+  const { data, error } = await db
     .from("github_installations")
     .select(
       "id, github_installation_id, account_login, account_type, suspended_at, revoked_at, verified_repository_ids",
@@ -171,5 +211,29 @@ export async function listConnections(userId: string): Promise<Connection[]> {
     .overrideTypes<InstallationRow[], { merge: false }>();
 
   if (error) throw new Error(`Could not list installations: ${error.code}`);
-  return Promise.all(data.map(describe));
+  if (data.length === 0) return [];
+
+  const synced = await syncedRepositories(
+    db,
+    userId,
+    data.map((row) => row.id),
+  );
+  return Promise.all(data.map((row) => describe(row, synced.get(row.id) ?? new Map())));
+}
+
+/**
+ * Forgets one of the user's Installations. Its private repositories, their analyses and Snapshots
+ * go with it through the foreign keys. The App stays installed on GitHub until its owner removes
+ * it there, and its webhooks are ignored until someone connects it again. Returns false when the
+ * user has no such Installation.
+ */
+export async function disconnectInstallation(userId: string, installationId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from("github_installations")
+    .delete()
+    .eq("id", installationId)
+    .eq("user_id", userId)
+    .select("id");
+  if (error) throw new Error(`Could not disconnect installation: ${error.code}`);
+  return data.length > 0;
 }
