@@ -7,6 +7,7 @@ import {
   findFile,
   impactOf,
   overviewOf,
+  privateAccessProblem,
   reachableBy,
   searchPaths,
 } from "./answers";
@@ -46,6 +47,50 @@ describe("reachableBy", () => {
 
   it("drops a repository someone else owns, even when it was saved", () => {
     expect(reachableBy([shared, theirs], "me")).toEqual([shared]);
+  });
+});
+
+describe("privateAccessProblem", () => {
+  const installation = {
+    id: "inst",
+    revoked_at: null,
+    suspended_at: null,
+    verified_repository_ids: [7],
+  };
+  const privateRepo = { github_id: 7, installation_id: "inst" };
+
+  it("reads public repositories and local folders without an Installation", () => {
+    expect(privateAccessProblem({ github_id: 7, installation_id: null }, [])).toBeNull();
+    expect(privateAccessProblem({ github_id: null, installation_id: null }, [])).toBeNull();
+  });
+
+  it("reads a private repository its live Installation was checked against", () => {
+    expect(privateAccessProblem(privateRepo, [installation])).toBeNull();
+  });
+
+  it("refuses once the Installation is revoked or gone", () => {
+    const revoked = { ...installation, revoked_at: "2026-11-10T00:00:00Z" };
+    expect(privateAccessProblem(privateRepo, [revoked])).toMatch(/uninstalled/);
+    expect(privateAccessProblem(privateRepo, [])).toMatch(/uninstalled/);
+  });
+
+  it("refuses when the only Installation passed is a different one", () => {
+    const another = { ...installation, id: "theirs" };
+    expect(privateAccessProblem(privateRepo, [another])).toMatch(/uninstalled/);
+  });
+
+  it("refuses while the App is suspended", () => {
+    const suspended = { ...installation, suspended_at: "2026-11-10T00:00:00Z" };
+    expect(privateAccessProblem(privateRepo, [suspended])).toMatch(/suspended/);
+  });
+
+  it("refuses a repository the user was never checked against", () => {
+    expect(privateAccessProblem({ github_id: 8, installation_id: "inst" }, [installation])).toMatch(
+      /Connect GitHub again/,
+    );
+    expect(privateAccessProblem({ github_id: null, installation_id: "inst" }, [installation])).toMatch(
+      /Connect GitHub again/,
+    );
   });
 });
 

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { checkImportRules } from "@reposcope/engine";
 import {
   foundPaths,
+  namedOnly,
+  PRIVATE_FILE_NOTE,
   readFoundConventions,
   REPOSITORY_CONTENT_LABEL,
 } from "@/lib/conventions/found";
@@ -40,7 +42,10 @@ function refusal(message: string) {
   return { content: [{ type: "text" as const, text: message }], isError: true };
 }
 
-/** Every tool goes through this, so none can reach a repository its key's owner didn't save. */
+/**
+ * Every tool goes through this, so none can reach a repository its key's owner didn't save, nor a
+ * private one whose GitHub access has ended.
+ */
 async function withRepository<T>(
   extra: Extra,
   name: string,
@@ -55,6 +60,9 @@ async function withRepository<T>(
     return refusal(
       `No repository matches "${name}". Yours: ${repositories.map((r) => r.full_name).join(", ") || "none"}.`,
     );
+  }
+  if (repository.unavailable) {
+    return refusal(`${repository.full_name} can't be read right now. ${repository.unavailable}`);
   }
 
   const data = await loadKnowledge(repository.id);
@@ -85,7 +93,13 @@ const handler = createMcpHandler(
         const userId = (extra as Extra).http?.authInfo?.extra?.userId as string | undefined;
         if (!userId) return refusal("Not authorized.");
         const repositories = await repositoriesOf(userId);
-        return text(repositories.map(({ full_name, source }) => ({ name: full_name, source })));
+        return text(
+          repositories.map(({ full_name, source, unavailable }) => ({
+            name: full_name,
+            source,
+            ...(unavailable && { unavailable }),
+          })),
+        );
       },
     );
 
@@ -241,10 +255,12 @@ const handler = createMcpHandler(
             repositoryFiles: args.includeRepositoryFiles
               ? {
                   trust: REPOSITORY_CONTENT_LABEL,
-                  files: await readFoundConventions(
-                    { ...known, commitSha: data.run.commitSha },
-                    repositoryFiles,
-                  ),
+                  files: known.installation_id
+                    ? namedOnly(repositoryFiles, PRIVATE_FILE_NOTE)
+                    : await readFoundConventions(
+                        { ...known, commitSha: data.run.commitSha },
+                        repositoryFiles,
+                      ),
                 }
               : repositoryFiles,
           });
