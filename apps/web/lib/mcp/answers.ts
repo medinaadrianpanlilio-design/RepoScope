@@ -28,6 +28,38 @@ export function reachableBy<T extends { owner_user_id: string | null }>(
   return repositories.filter(({ owner_user_id }) => owner_user_id === null || owner_user_id === userId);
 }
 
+export type InstallationState = {
+  id: string;
+  revoked_at: string | null;
+  suspended_at: string | null;
+  verified_repository_ids: number[];
+};
+
+/**
+ * Agents read a private repository's stored knowledge without any GitHub credentials, so GitHub
+ * never gets to refuse them. This applies the checks a fresh token would: the Installation still
+ * exists, isn't suspended, and the repository is one its user was checked against. Null means
+ * readable. `installations` must be the user's own.
+ */
+export function privateAccessProblem(
+  repository: { github_id: number | null; installation_id: string | null },
+  installations: InstallationState[],
+): string | null {
+  if (!repository.installation_id) return null;
+
+  const installation = installations.find(({ id }) => id === repository.installation_id);
+  if (!installation || installation.revoked_at) {
+    return "RepoScope was uninstalled from this repository's GitHub account. Connect GitHub again from the RepoScope dashboard.";
+  }
+  if (installation.suspended_at) {
+    return "The RepoScope App is suspended on this repository's GitHub account. Unsuspend it on GitHub.";
+  }
+  if (repository.github_id === null || !installation.verified_repository_ids.includes(repository.github_id)) {
+    return "This repository was given to RepoScope on GitHub after its owner connected. Connect GitHub again from the RepoScope dashboard.";
+  }
+  return null;
+}
+
 /**
  * A synced clone and its public record share a name. The clone is the code being worked on,
  * and may have uncommitted changes, so it wins.

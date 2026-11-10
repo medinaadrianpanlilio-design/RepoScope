@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { FOUND_PATHS, foundPaths, readFoundConventions } from "./found";
+import { FOUND_PATHS, foundPaths, namedOnly, readFoundConventions } from "./found";
 
 describe("foundPaths", () => {
   it("only asks for files the analysis saw", () => {
@@ -45,5 +45,14 @@ describe("readFoundConventions", () => {
     const found = await readFoundConventions({ ...github, source: "local" }, ["AGENTS.md"], read);
     expect(read).not.toHaveBeenCalled();
     expect(found).toEqual([{ path: "AGENTS.md", content: null, note: "This file stays on your computer." }]);
+  });
+});
+
+describe("namedOnly", () => {
+  it("names each file with a note and no content", () => {
+    expect(namedOnly(["AGENTS.md", "CLAUDE.md"], "Private.")).toEqual([
+      { path: "AGENTS.md", content: null, note: "Private." },
+      { path: "CLAUDE.md", content: null, note: "Private." },
+    ]);
   });
 });

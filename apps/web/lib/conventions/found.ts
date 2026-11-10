@@ -29,6 +29,14 @@ export function foundPaths(otherFiles: string[] | null, otherFileCount: number):
   return FOUND_PATHS.filter((path) => known.has(path));
 }
 
+/** Agents get no GitHub credentials, so a private repository's files are named, never read. */
+export const PRIVATE_FILE_NOTE =
+  "This repository is private, so RepoScope doesn't read its files for agents. Read it from your checkout.";
+
+export function namedOnly(paths: string[], note: string): FoundConvention[] {
+  return paths.map((path) => ({ path, content: null, note }));
+}
+
 type Target = { owner: string; name: string; commitSha: string | null; source: string };
 
 type Read = (path: string) => Promise<SourceFetch>;
@@ -42,7 +50,7 @@ export async function readFoundConventions(
     }),
 ): Promise<FoundConvention[]> {
   if (target.source === "local" || !target.commitSha) {
-    return paths.map((path) => ({ path, content: null, note: "This file stays on your computer." }));
+    return namedOnly(paths, "This file stays on your computer.");
   }
 
   const results = await Promise.all(paths.map(async (path) => ({ path, result: await read(path) })));
