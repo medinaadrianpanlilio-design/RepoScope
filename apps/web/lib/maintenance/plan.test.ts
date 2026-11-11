@@ -48,7 +48,7 @@ describe("trimming old analyses", () => {
 });
 
 describe("deleting unsaved repositories", () => {
-  const old = { id: "old", updated_at: daysAgo(31) };
+  const old = { id: "old", updated_at: daysAgo(31), full_name: "someone/app", owner_user_id: null };
   const oldRun = run("r", { repository_id: "old", created_at: daysAgo(31), completed_at: daysAgo(31) });
 
   it("deletes a repository nobody saved after 30 days", () => {
@@ -64,7 +64,7 @@ describe("deleting unsaved repositories", () => {
 
   it("keeps a repository imported recently", () => {
     expect(
-      plan({ repositories: [{ id: "old", updated_at: daysAgo(29) }], runs: [oldRun] })
+      plan({ repositories: [{ ...old, updated_at: daysAgo(29) }], runs: [oldRun] })
         .deleteRepositoryIds,
     ).toEqual([]);
   });
@@ -85,6 +85,16 @@ describe("deleting unsaved repositories", () => {
     );
 
     expect(plan({ repositories: [old], runs }).trimRunIds).toEqual([]);
+  });
+
+  it("keeps an example repository nobody saved, in any case", () => {
+    const example = { ...old, full_name: "Vercel/MS" };
+    expect(plan({ repositories: [example], runs: [oldRun] }).deleteRepositoryIds).toEqual([]);
+  });
+
+  it("still deletes someone's own copy that shares an example's name", () => {
+    const copy = { ...old, full_name: "vercel/ms", owner_user_id: "user" };
+    expect(plan({ repositories: [copy], runs: [oldRun] }).deleteRepositoryIds).toEqual(["old"]);
   });
 });
 
