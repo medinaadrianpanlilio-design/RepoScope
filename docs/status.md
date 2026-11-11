@@ -1,14 +1,15 @@
 # Where RepoScope is now
 
-Last updated: 7 November 2026. Read this first when picking the project back up.
+Last updated: 11 November 2026. Read this first when picking the project back up.
 
 ## In one line
 
 Phases 1, 2 and 3 are done, and the site is live at https://repo-scope-delta.vercel.app: paste a repo
 link, watch it get analyzed, then explore it with the interactive graph, file explorer and dependency
 inspector. Phases 4 and 5 are done too: local AI summaries and chat, insights, and change impact.
-Phases 6 and 7 are built and tested: local folders, `reposcope sync`, the MCP server, Conventions and
-risk warnings. What's left of Phase 6 is the owner's one-week trial in real coding sessions.
+Phases 6, 7 and 8 are built and tested: local folders, `reposcope sync`, the MCP server, Conventions,
+risk warnings, and private repositories through the GitHub App with webhook sync. Phase 9 (polish) is
+five tickets of seven in. What's left of Phase 6 is the owner's one-week trial in real coding sessions.
 
 ## Done
 
@@ -102,7 +103,7 @@ passes. On microsoft/vscode, 158,879 imports showed 0 disagreements with TypeScr
 
 Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests pass.
 
-**Phase 8: GitHub App and webhooks (in progress)**
+**Phase 8: GitHub App and webhooks (all 10 tickets)**
 
 - 02 The schema is done: `github_installations`, and private GitHub rows with one owner. See
   `docs/adr/0008`. `e2e/private-access.spec.ts` proves it on the real database, across every table.
@@ -150,14 +151,34 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   against its user. Agents are told why when it fails. A private repository's convention files are named
   for agents but never fetched. Checked through the real MCP route and database (7 checks, 5 of which
   fail on the code before this change).
+- 10 Security review of Phase 8: no high or medium findings. Migration `20261113000000_intended_grants`
+  limits the browser roles to the table rights the app uses and makes the conventions update policy check
+  the repository; the owner ran it on 2026-11-11. The webhook and callback routes have tests, and
+  `docs/github-app.md` describes the App's setup. Disconnect was checked across two users on the real
+  database.
 
-Last results: 167 engine tests, 31 CLI tests, 526 web tests and 23 database tests pass.
+**Phase 9: Polish (tickets 01-05 of 7)**
+
+- 01 The home page shows real graph pictures of pmndrs/zustand in each layout, a recording of the graph,
+  how an analysis runs, the import forms RepoScope reads, and the example repositories.
+- 02 The graph has force-directed and by-folder layouts besides layered. Switching keeps the selected
+  file, and the choice is remembered in the browser.
+- 03 Big repositories save and load in parallel. On date-fns, saving went from 4.3 s to 1.9 s and
+  loading the graph from 0.9 s to 0.4 s. See `docs/adr/0004`.
+- 04 vercel/ms, sindresorhus/ky, pmndrs/zustand and colinhacks/zod are kept through the 30-day cleanup,
+  and the daily job re-analyzes any that are missing.
+- 05 Skip link, visible focus, readable field borders, underlined links, 24px tap targets and reduced
+  motion. `e2e/accessibility.spec.ts` runs axe-core's WCAG AA checks on every page.
+
+Last results: 167 engine tests, 31 CLI tests, 560 web tests and 28 browser tests pass.
 
 ## Next
 
-1. Ticket 10: security review over Phase 8.
-2. Check tickets 08 and 09 on the live site.
-3. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
+1. Check Phase 8 tickets 08 and 09 on the live site: the dashboard's GitHub section, Sync, and MCP on a
+   private repository.
+2. Phase 9 ticket 06: README, self-hosting and Local AI guides.
+3. Phase 9 ticket 07: the owner records the demo video.
+4. Ticket 09 of Phase 6: use RepoScope for a week in real sessions, at
    `.scratch/phase-6-mcp/issues/09-daily-trial.md`.
 
 The full plan and build order are in `docs/spec.md`.
