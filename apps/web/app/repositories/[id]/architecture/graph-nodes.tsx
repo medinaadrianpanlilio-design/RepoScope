@@ -60,4 +60,15 @@ export function FolderNode({ data }: NodeProps<Node<FolderNodeData>>) {
   );
 }
 
-export const nodeTypes = { file: FileNode, folder: FolderNode };
+export type BoxNodeData = { path: string };
+
+/** A folder's frame in the directory layout. It only shows grouping, so it can't be clicked. */
+export function BoxNode({ data }: NodeProps<Node<BoxNodeData>>) {
+  return (
+    <div className="graph-box" aria-hidden>
+      <span className="graph-box-label font-mono">{data.path}</span>
+    </div>
+  );
+}
+
+export const nodeTypes = { file: FileNode, folder: FolderNode, box: BoxNode };

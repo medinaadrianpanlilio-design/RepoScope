@@ -32,13 +32,39 @@ import {
   type ViewNode,
 } from "@/lib/graph/types";
 import { changeImpact, impactByNode } from "@/lib/graph/impact";
+import {
+  isLayoutKind,
+  LAYOUT_LABELS,
+  LAYOUTS,
+  type FolderBox,
+  type LayoutKind,
+  type Positions,
+} from "@/lib/graph/layouts";
 import { connectedTo, defaultExpanded, foldersOf, toGraphView, visibleNodeId } from "@/lib/graph/view";
 import { isTypingTarget, nextIndex } from "@/lib/ui/layout";
 import { FilePanel, PANEL_LIMITS } from "./file-panel";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
 import { ImpactPanel } from "./impact-panel";
 
-type Positions = Record<string, { x: number; y: number }>;
+const LAYOUT_KEY = "reposcope:layout";
+
+/** A remembered choice is a convenience, so any storage failure just means the default. */
+function storedLayout(): LayoutKind {
+  try {
+    const value = window.localStorage.getItem(LAYOUT_KEY);
+    return isLayoutKind(value) ? value : "layered";
+  } catch {
+    return "layered";
+  }
+}
+
+function storeLayout(layout: LayoutKind) {
+  try {
+    window.localStorage.setItem(LAYOUT_KEY, layout);
+  } catch {
+    // Nothing to do: the choice still applies until the page is closed.
+  }
+}
 
 const EDGE_STYLES: Record<RelationshipType, { label: string; dash?: string; width: number }> = {
   static: { label: "Static import", width: 1.25 },
@@ -104,7 +130,9 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         ...(initialFile ? foldersOf(initialFile.path) : []),
       ]),
   );
+  const [layout, setLayout] = useState<LayoutKind>(storedLayout);
   const [positions, setPositions] = useState<Positions | null>(null);
+  const [boxes, setBoxes] = useState<FolderBox[]>([]);
   const [laidOutView, setLaidOutView] = useState<GraphView | null>(null);
   const [layoutFailed, setLayoutFailed] = useState(false);
   const [selected, setSelected] = useState<string | null>(
@@ -158,19 +186,29 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         setLayoutFailed(false);
         setDragged({});
         setPositions(message.positions);
+        setBoxes(message.boxes);
         setLaidOutView(view);
       }
     };
     current.postMessage({
       requestId: id,
-      nodes: view.nodes.map(({ id: nodeId }) => ({
+      layout,
+      nodes: view.nodes.map(({ id: nodeId, path }) => ({
         id: nodeId,
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
+        path,
       })),
-      edges: view.edges.filter((edge) => edge.source !== edge.target),
+      edges: view.edges.map(({ id: edgeId, source, target }) => ({ id: edgeId, source, target })),
     });
-  }, [view, layoutRun]);
+  }, [view, layout, layoutRun]);
+
+  function changeLayout(next: LayoutKind) {
+    // The selection stays, and the camera goes back to it once the new layout arrives.
+    pendingFocus.current = selected;
+    setLayout(next);
+    storeLayout(next);
+  }
 
   const fitTo = useCallback(
     (nodeId: string | null) => {
@@ -248,7 +286,23 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
       return true;
     };
 
-    return view.nodes.flatMap((node) => {
+    const frames: Node[] = boxes.map((box) => ({
+      id: box.id,
+      type: "box",
+      position: { x: box.x, y: box.y },
+      data: { path: box.path },
+      width: box.width,
+      height: box.height,
+      style: { width: box.width, height: box.height },
+      zIndex: -1,
+      draggable: false,
+      selectable: false,
+      focusable: false,
+      hidden:
+        directory !== "" && box.path !== directory && !box.path.startsWith(`${directory}/`),
+    }));
+
+    return frames.concat(view.nodes.flatMap((node) => {
       const position = dragged[node.id] ?? positions[node.id];
       if (!position) return [];
       const state = impactActive
@@ -282,10 +336,11 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           height: NODE_HEIGHT,
         },
       ];
-    });
+    }));
   }, [
     view.nodes,
     positions,
+    boxes,
     dragged,
     related,
     selected,
@@ -361,6 +416,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
   }
 
   function onNodeClick(_event: unknown, node: Node) {
+    if (node.type === "box") return;
     if (node.type === "folder") {
       const { path } = node.data as { path: string };
       setSelected(null);
@@ -492,6 +548,20 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         </div>
 
         <div className="pointer-events-auto flex flex-wrap gap-2">
+          <label>
+            <span className="sr-only">Layout</span>
+            <select
+              value={layout}
+              onChange={(event) => changeLayout(event.target.value as LayoutKind)}
+              className="field w-auto"
+            >
+              {LAYOUTS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {LAYOUT_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+          </label>
           {hasFolders && (
             <label>
               <span className="sr-only">Filter by directory</span>
