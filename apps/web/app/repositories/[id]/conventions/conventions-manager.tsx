@@ -255,10 +255,10 @@ export function ConventionsManager({ repositoryId }: { repositoryId: string }) {
 function ItemActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
     <span className="flex shrink-0 gap-3 text-xs">
-      <button type="button" onClick={onEdit} className="text-accent hover:underline">
+      <button type="button" onClick={onEdit} className="text-accent underline underline-offset-2 hover:decoration-2">
         Edit
       </button>
-      <button type="button" onClick={onDelete} className="text-danger hover:underline">
+      <button type="button" onClick={onDelete} className="text-danger underline underline-offset-2 hover:decoration-2">
         Delete
       </button>
     </span>

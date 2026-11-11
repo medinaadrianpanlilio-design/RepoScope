@@ -41,7 +41,7 @@ import {
   type Positions,
 } from "@/lib/graph/layouts";
 import { connectedTo, defaultExpanded, foldersOf, toGraphView, visibleNodeId } from "@/lib/graph/view";
-import { isTypingTarget, nextIndex } from "@/lib/ui/layout";
+import { isTypingTarget, nextIndex, prefersReducedMotion } from "@/lib/ui/layout";
 import { FilePanel, PANEL_LIMITS } from "./file-panel";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
 import { ImpactPanel } from "./impact-panel";
@@ -214,7 +214,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     (nodeId: string | null) => {
       requestAnimationFrame(() =>
         flow.fitView({
-          duration: 300,
+          duration: prefersReducedMotion() ? 0 : 300,
           padding: nodeId ? 2 : 0.1,
           maxZoom: 1.2,
           ...(nodeId ? { nodes: [{ id: nodeId }] } : {}),

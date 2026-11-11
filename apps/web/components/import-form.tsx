@@ -68,7 +68,7 @@ export function ImportForm({ example }: { example?: string }) {
           <button
             type="button"
             onClick={() => setUrl(example)}
-            className="font-mono text-accent hover:underline"
+            className="font-mono text-accent underline underline-offset-2 hover:decoration-2"
           >
             {example.replace("https://github.com/", "")}
           </button>

@@ -27,6 +27,11 @@ export function nextIndex(current: number, delta: number, length: number): numbe
   return (current + delta + length) % length;
 }
 
+/** Animations done in script must ask, since the CSS rule for reduced motion can't reach them. */
+export function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+}
+
 /** Single-key shortcuts must not fire while someone is typing. */
 export function isTypingTarget(target: EventTarget | null): boolean {
   return (

@@ -66,7 +66,7 @@ export async function GitHubPanel({ userId, outcome }: { userId: string; outcome
           </a>
           <p className="mt-2 text-xs text-muted">
             Already installed the App, but GitHub left you on its settings page?{" "}
-            <a href="/api/github/callback" className="text-accent hover:underline">
+            <a href="/api/github/callback" className="text-accent underline underline-offset-2 hover:decoration-2">
               Finish connecting
             </a>
             .

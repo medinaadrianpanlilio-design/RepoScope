@@ -15,7 +15,7 @@ type Props = PageProps<"/repositories/[id]/conventions">;
 
 export default function ConventionsPage({ params }: Props) {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
       <Suspense fallback={<p className="text-sm text-muted">Loading repository…</p>}>
         <Conventions params={params} />
       </Suspense>
@@ -47,7 +47,7 @@ async function Conventions({ params }: Pick<Props, "params">) {
           <p className="mt-1 text-sm text-muted">
             Import rules and notes are private to you, even on a public repository.
           </p>
-          <Link href="/login" className="mt-3 inline-block text-sm text-accent hover:underline">
+          <Link href="/login" className="mt-3 inline-block text-sm text-accent underline underline-offset-2 hover:decoration-2">
             Sign in
           </Link>
         </div>

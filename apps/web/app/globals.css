@@ -10,6 +10,7 @@
   --color-foreground: #f3f4f6;
   --color-muted: #9ca3af;
   --color-line: #262c38;
+  --color-control: #646d80;
   --color-danger: #f87171;
   --color-impact: #e0a458;
   --font-sans: var(--font-geist-sans);
@@ -27,8 +28,9 @@ body {
 }
 
 @layer components {
+  /* The border is the only thing marking a field's edge, so it needs 3:1 against the page. */
   .field {
-    @apply w-full rounded-md border border-line bg-card px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent;
+    @apply w-full rounded-md border border-control bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent;
   }
 
   .button-primary {
@@ -40,9 +42,43 @@ body {
   }
 }
 
-:is(a, button, summary, select, [role="separator"]):focus-visible {
+:is(a, button, summary, select, input, textarea, [role="separator"]):focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+/* Main is focused only by the skip link, which already says where focus went. */
+main:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 50;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-background);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .react-flow__node:focus-visible {

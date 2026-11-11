@@ -162,7 +162,7 @@ export function ConnectPanel() {
                   {key.kind === "mcp" ? "MCP" : "Sync"} · {key.key_prefix}… · {usedLabel(key)}
                 </span>
               </span>
-              <button type="button" onClick={() => revoke(key)} className="text-xs text-danger hover:underline">
+              <button type="button" onClick={() => revoke(key)} className="text-xs text-danger underline underline-offset-2 hover:decoration-2">
                 Revoke
               </button>
             </li>

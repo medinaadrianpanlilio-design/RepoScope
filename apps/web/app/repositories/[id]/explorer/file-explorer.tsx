@@ -283,7 +283,7 @@ function Workspace({
               <button
                 type="button"
                 onClick={() => setExtension("")}
-                className="text-accent hover:underline"
+                className="text-accent underline underline-offset-2 hover:decoration-2"
               >
                 Show all files
               </button>
@@ -462,7 +462,7 @@ function FileView({
           </span>
           <Link
             href={`/repositories/${repositoryId}/architecture?file=${file.id}`}
-            className="inline-flex items-center gap-1 text-accent hover:underline"
+            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:decoration-2"
           >
             <Share2 size={12} aria-hidden /> View in graph
           </Link>
@@ -471,7 +471,7 @@ function FileView({
               href={githubFileUrl(repositoryUrl, commitSha, file.path)}
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:decoration-2"
             >
               GitHub <ExternalLink size={12} aria-hidden />
             </a>
@@ -546,7 +546,7 @@ function PanelToggle({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="hidden p-0.5 text-muted hover:text-foreground lg:inline-flex"
+      className="hidden size-6 items-center justify-center text-muted hover:text-foreground lg:inline-flex"
     >
       {icon}
     </button>
@@ -554,7 +554,7 @@ function PanelToggle({
 }
 
 function rowClass(active: boolean): string {
-  return `flex w-full items-center gap-1 rounded py-0.5 pr-1 text-left hover:bg-elevated ${
+  return `flex min-h-6 w-full items-center gap-1 rounded py-0.5 pr-1 text-left hover:bg-elevated ${
     active ? "bg-elevated text-accent" : ""
   }`;
 }
