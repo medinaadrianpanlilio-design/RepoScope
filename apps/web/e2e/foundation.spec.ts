@@ -3,16 +3,15 @@ import { expect, test } from "@playwright/test";
 test("the landing page explains the product and offers import", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "Understand Any Codebase. Visually." }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Import repository" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "See how code connects" })).toBeVisible();
+  // The hero's form; the page ends with a second one.
+  await expect(page.getByRole("button", { name: "Import repository" }).first()).toBeVisible();
 });
 
 test("an invalid URL shows a clear error", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("GitHub repository URL").fill("https://evil.example/a/b");
-  await page.getByRole("button", { name: "Import repository" }).click();
+  await page.getByLabel("GitHub repository URL").first().fill("https://evil.example/a/b");
+  await page.getByRole("button", { name: "Import repository" }).first().click();
 
   await expect(page.getByRole("alert").filter({ hasText: "github.com" })).toBeVisible();
 });
@@ -78,8 +77,8 @@ test.describe("live analysis", () => {
   test("import shows real progress, then real results", async ({ page }) => {
     test.setTimeout(120_000);
     await page.goto("/");
-    await page.getByLabel("GitHub repository URL").fill(process.env.E2E_REPO ?? "");
-    await page.getByRole("button", { name: "Import repository" }).click();
+    await page.getByLabel("GitHub repository URL").first().fill(process.env.E2E_REPO ?? "");
+    await page.getByRole("button", { name: "Import repository" }).first().click();
 
     await expect(page).toHaveURL(/overview/);
     await expect(page.getByText("Internal dependencies")).toBeVisible({ timeout: 90_000 });
