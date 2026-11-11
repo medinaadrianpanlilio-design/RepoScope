@@ -35,3 +35,15 @@ in about 4 s with a message naming the limit.
 folder of 1,660 files takes about 3.5 s, and panning 250 nodes held 57 frames a second in a headless
 browser. Laying out all 1,785 files at once takes about 14 s, off the main thread, so the page shows
 that it's arranging the graph. The grouped view means few people will reach that case.
+
+**Profiled step by step (Phase 9),** on date-fns again, from a PC against the live database. Before
+tuning, a full analysis took 9.4 s: saving 4.3 s, download 3.4 s, parsing 1.1 s, everything else under
+0.2 s each. Saving sent about 16 inserts one after another, and loading the graph read its pages one
+after another. Both now run up to four requests at once: saving fell to 1.9 s and loading the graph from
+about 0.9 s to 0.4 s, with every row still read back. Parsing is the only real CPU work.
+
+**Against Vercel's limits.** The largest allowed repository takes well under a tenth of the 300 s budget,
+so analyses stay in a single function and don't need Vercel Workflows. Vercel bills active CPU, not
+time spent waiting on GitHub or the database, so a largest-size analysis costs about 2 to 3 CPU-seconds.
+The free plan's 4 CPU-hours (14,400 s) a month then covers roughly 5,000 of them, and most analyses are
+far smaller. This is an estimate; the real monthly figure is on Vercel's Usage page.
