@@ -34,7 +34,7 @@ async function Conventions({ params }: Pick<Props, "params">) {
 
   return (
     <>
-      <h1 className="truncate font-mono text-sm font-semibold">{repository.full_name}</h1>
+      <h1 className="truncate font-mono text-xl font-bold tracking-tight sm:text-2xl">{repository.full_name}</h1>
       <div className="mt-2">
         <RepoTabs repositoryId={id} active="conventions" />
       </div>

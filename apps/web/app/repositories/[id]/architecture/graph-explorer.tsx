@@ -42,23 +42,48 @@ import {
 } from "@/lib/graph/layouts";
 import { connectedTo, defaultExpanded, foldersOf, toGraphView, visibleNodeId } from "@/lib/graph/view";
 import { isTypingTarget, nextIndex, prefersReducedMotion } from "@/lib/ui/layout";
+import { useMediaQuery } from "@/lib/ui/media";
+import { LocalAiColumn } from "../local-ai";
 import { FilePanel, PANEL_LIMITS } from "./file-panel";
+import { Graph3D } from "./graph-3d";
 import { nodeTypes, NODE_HEIGHT, NODE_WIDTH } from "./graph-nodes";
 import { ImpactPanel } from "./impact-panel";
 
 const LAYOUT_KEY = "reposcope:layout";
+const AI_COLUMN_KEY = "reposcope:ai-column";
+
+/** The 2D layouts, plus the 3D view, which places files itself. */
+type ViewKind = LayoutKind | "3d";
+const VIEW_KINDS: ViewKind[] = [...LAYOUTS, "3d"];
+const VIEW_LABELS: Record<ViewKind, string> = { ...LAYOUT_LABELS, "3d": "3D" };
 
 /** A remembered choice is a convenience, so any storage failure just means the default. */
-function storedLayout(): LayoutKind {
+function storedLayout(): ViewKind {
   try {
     const value = window.localStorage.getItem(LAYOUT_KEY);
-    return isLayoutKind(value) ? value : "layered";
+    return value === "3d" || isLayoutKind(value) ? value : "layered";
   } catch {
     return "layered";
   }
 }
 
-function storeLayout(layout: LayoutKind) {
+function storedAiColumn(): boolean {
+  try {
+    return window.localStorage.getItem(AI_COLUMN_KEY) !== "closed";
+  } catch {
+    return true;
+  }
+}
+
+function storeAiColumn(open: boolean) {
+  try {
+    window.localStorage.setItem(AI_COLUMN_KEY, open ? "open" : "closed");
+  } catch {
+    // The choice still applies until the page is closed.
+  }
+}
+
+function storeLayout(layout: ViewKind) {
   try {
     window.localStorage.setItem(LAYOUT_KEY, layout);
   } catch {
@@ -130,7 +155,13 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         ...(initialFile ? foldersOf(initialFile.path) : []),
       ]),
   );
-  const [layout, setLayout] = useState<LayoutKind>(storedLayout);
+  const [layout, setLayout] = useState<ViewKind>(storedLayout);
+  const is3d = layout === "3d";
+  const [flyRequest, setFlyRequest] = useState(0);
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const [aiColumnOpen, setAiColumnOpen] = useState(storedAiColumn);
+  const hasLocalAi = source.repositoryUrl !== "";
+  const aiInColumn = hasLocalAi && wide;
   const [positions, setPositions] = useState<Positions | null>(null);
   const [boxes, setBoxes] = useState<FolderBox[]>([]);
   const [laidOutView, setLaidOutView] = useState<GraphView | null>(null);
@@ -173,7 +204,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
 
   useEffect(() => {
     const current = worker.current;
-    if (!current) return;
+    if (!current || layout === "3d") return;
     const id = ++requestId.current;
 
     current.onmessage = ({ data: message }) => {
@@ -203,7 +234,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     });
   }, [view, layout, layoutRun]);
 
-  function changeLayout(next: LayoutKind) {
+  function changeLayout(next: ViewKind) {
     // The selection stays, and the camera goes back to it once the new layout arrives.
     pendingFocus.current = selected;
     setLayout(next);
@@ -364,22 +395,22 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
       const color = impactActive
         ? inImpact
           ? "#e0a458"
-          : "#262c38"
+          : "#2a3449"
         : !selected
-          ? "#4b5563"
+          ? "#475569"
           : !touches
-            ? "#262c38"
+            ? "#2a3449"
             : edge.source === selected
-              ? "#5b9cff"
-              : "#8b7cff";
+              ? "#60a5fa"
+              : "#22c55e";
       return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
         hidden: hiddenTypes.has(edge.type) || !shown.has(edge.source) || !shown.has(edge.target),
         label: edge.count > 1 ? String(edge.count) : undefined,
-        labelStyle: { fill: "#9ca3af", fontSize: 10 },
-        labelBgStyle: { fill: "#0b0d12" },
+        labelStyle: { fill: "#94a3b8", fontSize: 10 },
+        labelBgStyle: { fill: "#0b1222" },
         markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
         style: { stroke: color, strokeWidth: style.width, strokeDasharray: style.dash },
       };
@@ -399,6 +430,10 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     setQuery("");
     setDirectory("");
     setSelected(id);
+    if (layout === "3d") {
+      setFlyRequest((request) => request + 1);
+      return;
+    }
 
     const closed = foldersOf(file.path).filter((folder) => !expanded.has(folder));
     if (closed.length > 0) {
@@ -446,16 +481,82 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
     setExpanded(defaultExpanded(data.files));
   }
 
+  const selectedFileId = selected?.startsWith("file:") ? Number(selected.slice(5)) : null;
+
+  const view3d = useMemo(() => {
+    if (!is3d) return null;
+    const relatedIds = new Set<number>();
+    if (hideUnrelated && selectedFileId !== null) {
+      relatedIds.add(selectedFileId);
+      for (const edge of data.edges) {
+        if (edge.source === selectedFileId) relatedIds.add(edge.target);
+        if (edge.target === selectedFileId) relatedIds.add(edge.source);
+      }
+    }
+    const affectedIds = new Set(impacted.map((item) => item.file.id));
+    const files = data.files.filter((file) => {
+      if (directory && file.path !== directory && !file.path.startsWith(`${directory}/`)) return false;
+      if (hiddenLanguages.has(file.language)) return false;
+      if (impactActive && onlyAffected) return impactIds.includes(file.id) || affectedIds.has(file.id);
+      if (hideUnrelated && selectedFileId !== null) return relatedIds.has(file.id);
+      return true;
+    });
+    const kept = new Set(files.map((file) => file.id));
+    const edges = data.edges.filter(
+      (edge) => !hiddenTypes.has(edge.type) && kept.has(edge.source) && kept.has(edge.target),
+    );
+    return {
+      files,
+      edges,
+      impact: impactActive ? { sources: new Set(impactIds), affected: affectedIds } : null,
+    };
+  }, [
+    is3d,
+    data,
+    directory,
+    hiddenLanguages,
+    hiddenTypes,
+    hideUnrelated,
+    selectedFileId,
+    impactActive,
+    onlyAffected,
+    impactIds,
+    impacted,
+  ]);
+
   const hasFolders = topFolders.length > 0;
   const selectedFile = selected
     ? data.files.find((file) => `file:${file.id}` === selected)
     : undefined;
 
   return (
+    <div className="flex min-h-[520px] flex-1">
+      {aiInColumn && (
+        <LocalAiColumn
+          open={aiColumnOpen}
+          onOpenChange={(open) => {
+            setAiColumnOpen(open);
+            storeAiColumn(open);
+          }}
+          analysisId={source.analysisId}
+          data={data}
+          file={selectedFile ?? null}
+        />
+      )}
     <div
-      className="relative min-h-[520px] flex-1"
+      className="relative min-w-0 flex-1"
       style={{ "--panel-width": `${panelWidth}px` } as CSSProperties}
     >
+      {is3d && view3d ? (
+        <Graph3D
+          files={view3d.files}
+          edges={view3d.edges}
+          selectedId={selectedFileId}
+          impact={view3d.impact}
+          flyRequest={flyRequest}
+          onSelect={(id) => setSelected(id === null || id === selectedFileId ? null : `file:${id}`)}
+        />
+      ) : (
       <div className="absolute inset-0" onKeyDown={onCanvasKeyDown}>
       <ReactFlow
         nodes={nodes}
@@ -473,7 +574,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         proOptions={{ hideAttribution: true }}
         aria-label="Dependency graph"
       >
-        <Background gap={24} color="#1c2230" bgColor="#0b0d12" />
+        <Background gap={24} color="#1e293b" bgColor="#0b1222" />
         <Controls
           showInteractive={false}
           position="bottom-right"
@@ -481,6 +582,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         />
       </ReactFlow>
       </div>
+      )}
 
       <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
         <div className="pointer-events-auto relative w-full sm:w-72">
@@ -552,12 +654,12 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
             <span className="sr-only">Layout</span>
             <select
               value={layout}
-              onChange={(event) => changeLayout(event.target.value as LayoutKind)}
+              onChange={(event) => changeLayout(event.target.value as ViewKind)}
               className="field w-auto"
             >
-              {LAYOUTS.map((kind) => (
+              {VIEW_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {LAYOUT_LABELS[kind]}
+                  {VIEW_LABELS[kind]}
                 </option>
               ))}
             </select>
@@ -579,19 +681,23 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
               </select>
             </label>
           )}
-          <button type="button" className="button-secondary bg-card" onClick={() => fitTo(null)}>
-            Fit to screen
-          </button>
-          <button
-            type="button"
-            className="button-secondary bg-card"
-            onClick={() => setLayoutRun((run) => run + 1)}
-          >
-            Reset layout
-          </button>
-          <button type="button" className="button-secondary bg-card" onClick={closeAll}>
-            Collapse folders
-          </button>
+          {!is3d && (
+            <>
+              <button type="button" className="button-secondary bg-card" onClick={() => fitTo(null)}>
+                Fit to screen
+              </button>
+              <button
+                type="button"
+                className="button-secondary bg-card"
+                onClick={() => setLayoutRun((run) => run + 1)}
+              >
+                Reset layout
+              </button>
+              <button type="button" className="button-secondary bg-card" onClick={closeAll}>
+                Collapse folders
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -624,7 +730,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
                   y1="3"
                   x2="28"
                   y2="3"
-                  stroke="#9ca3af"
+                  stroke="#94a3b8"
                   strokeWidth={EDGE_STYLES[type].width}
                   strokeDasharray={EDGE_STYLES[type].dash}
                 />
@@ -669,6 +775,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           onToggleImpact={() => toggleImpact(selectedFile)}
           onOpenFile={revealFile}
           onClose={() => setSelected(null)}
+          showLocalAi={hasLocalAi && !aiInColumn}
         />
       )}
 
@@ -687,7 +794,7 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
         />
       )}
 
-      {laidOutView !== view && (
+      {!is3d && laidOutView !== view && (
         <p
           role="status"
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-md border border-line bg-card px-3 py-2 text-sm text-muted"
@@ -695,11 +802,12 @@ function Canvas({ data, source }: { data: GraphPayload; source: Source }) {
           Arranging {view.nodes.length.toLocaleString("en-US")} nodes…
         </p>
       )}
-      {layoutFailed && (
+      {!is3d && layoutFailed && (
         <p role="alert" className="absolute inset-0 flex items-center justify-center text-sm text-danger">
           We couldn&apos;t arrange this graph. Try collapsing some folders.
         </p>
       )}
+    </div>
     </div>
   );
 }

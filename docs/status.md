@@ -159,8 +159,9 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
 
 **Phase 9: Polish (tickets 01-05 of 7)**
 
-- 01 The home page shows real graph pictures of pmndrs/zustand in each layout, a recording of the graph,
-  how an analysis runs, the import forms RepoScope reads, and the example repositories.
+- 01 The home page is built around pmndrs/zustand's real analysis: a graph to click through, change
+  impact, an insight, languages and a real `get_impact` answer, all read from the database when the page
+  loads, plus the example repositories.
 - 02 The graph has force-directed and by-folder layouts besides layered. Switching keeps the selected
   file, and the choice is remembered in the browser.
 - 03 Big repositories save and load in parallel. On date-fns, saving went from 4.3 s to 1.9 s and
@@ -169,8 +170,17 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   and the daily job re-analyzes any that are missing.
 - 05 Skip link, visible focus, readable field borders, underlined links, 24px tap targets and reduced
   motion. `e2e/accessibility.spec.ts` runs axe-core's WCAG AA checks on every page.
+- Redesign (2026-11-11), using the ui-ux-pro-max design system for a developer tool: a slate and green
+  palette, IBM Plex Sans with JetBrains Mono, 44px controls, and a home page in its "Product Demo +
+  Features" pattern. A mockup came first and the owner approved it.
+- The graph has a 3D view: every file a glowing point coloured by folder, sized by how much imports it,
+  in space you can turn, pan and zoom (`3d-force-graph`, loaded only when 3D is picked). Picking a file
+  lights importers green and imports blue, and change impact works there too. Browsers without WebGL
+  get a message pointing to the 2D layouts.
+- On wide screens Local AI has its own column left of the graph, and the file panel on the right puts
+  the source first.
 
-Last results: 167 engine tests, 31 CLI tests, 560 web tests and 28 browser tests pass.
+Last results: 167 engine tests, 31 CLI tests, 568 web tests and 30 browser tests pass.
 
 ## Next
 

@@ -1,16 +1,10 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { ChevronRight, Folder } from "lucide-react";
 import type { GraphFile } from "@/lib/graph/types";
+import { languageColor } from "@/lib/ui/colors";
 
 export const NODE_WIDTH = 190;
 export const NODE_HEIGHT = 38;
-
-const LANGUAGE_COLORS: Record<string, string> = {
-  TypeScript: "#5b9cff",
-  TSX: "#8b7cff",
-  JavaScript: "#e3c55a",
-  JSX: "#e09a5a",
-};
 
 export type FileNodeData = { name: string; path: string; file: GraphFile };
 export type FolderNodeData = { name: string; path: string; fileCount: number; affected?: number };
@@ -30,7 +24,7 @@ export function FileNode({ data }: NodeProps<Node<FileNodeData>>) {
       {handles}
       <span
         className="size-2 shrink-0 rounded-full"
-        style={{ background: LANGUAGE_COLORS[file.language] ?? "#9ca3af" }}
+        style={{ background: languageColor(file.language) }}
         aria-hidden
       />
       <span className="min-w-0 flex-1 truncate font-mono">{name}</span>

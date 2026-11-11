@@ -1,20 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * From the ui-ux-pro-max design system for a developer tool: Dark Mode (OLED) with Swiss
+ * minimalism, "code dark + run green", IBM Plex Sans with JetBrains Mono. Green marks what imports
+ * a file and the main action; blue marks what a file imports, and keyboard focus.
+ */
 @theme inline {
-  --color-background: #0b0d12;
-  --color-sidebar: #11141b;
-  --color-card: #161a23;
-  --color-elevated: #1c2230;
-  --color-accent: #5b9cff;
-  --color-accent-2: #8b7cff;
-  --color-foreground: #f3f4f6;
-  --color-muted: #9ca3af;
-  --color-line: #262c38;
-  --color-control: #646d80;
+  --color-background: #0f172a;
+  --color-sidebar: #131c2e;
+  --color-card: #1b2336;
+  --color-elevated: #272f42;
+  --color-accent: #22c55e;
+  --color-accent-hover: #4ade80;
+  --color-accent-2: #60a5fa;
+  --color-focus: #60a5fa;
+  --color-foreground: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-line: #2a3449;
+  --color-control: #64748b;
   --color-danger: #f87171;
   --color-impact: #e0a458;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: #0b1222;
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+/* Read from plain CSS, so they're declared here rather than left to Tailwind to emit. */
+:root {
+  --focus: #60a5fa;
+  --canvas: #0b1222;
+  --hairline: #2a3449;
+  --lang-ts: #60a5fa;
+  --lang-tsx: #a78bfa;
+  --lang-js: #facc15;
+  --lang-jsx: #fb923c;
+  --importer: #22c55e;
+  --imported: #60a5fa;
 }
 
 html {
@@ -30,20 +51,20 @@ body {
 @layer components {
   /* The border is the only thing marking a field's edge, so it needs 3:1 against the page. */
   .field {
-    @apply w-full rounded-md border border-control bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent;
+    @apply min-h-11 w-full rounded-lg border border-control bg-background px-3 py-2 text-sm text-foreground transition-colors duration-150 placeholder:text-muted hover:border-muted focus:border-focus;
   }
 
   .button-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium whitespace-nowrap text-background hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-semibold whitespace-nowrap text-background transition-colors duration-150 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .button-secondary {
-    @apply inline-flex items-center justify-center rounded-md border border-line px-3 py-1.5 text-sm hover:bg-elevated;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-control px-4 py-1.5 text-sm font-medium transition-colors duration-150 hover:border-muted hover:bg-elevated;
   }
 }
 
 :is(a, button, summary, select, input, textarea, [role="separator"]):focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
@@ -86,8 +107,8 @@ main:focus {
 }
 
 .react-flow__node:focus-visible .graph-node {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 
 .graph-node {
@@ -101,7 +122,9 @@ main:focus {
   border-radius: 6px;
   background: var(--color-card);
   color: var(--color-foreground);
+  font-family: var(--font-mono);
   font-size: 11px;
+  transition: border-color 150ms ease;
 }
 
 .graph-node-folder {
@@ -120,11 +143,11 @@ main:focus {
 }
 
 .react-flow__node.is-incoming .graph-node {
-  border-color: var(--color-accent-2);
+  border-color: var(--color-accent);
 }
 
 .react-flow__node.is-outgoing .graph-node {
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-2);
 }
 
 .react-flow__node.is-impact-source .graph-node {
@@ -183,4 +206,17 @@ main:focus {
   user-select: none;
   content: counter(line);
   counter-increment: line;
+}
+
+/* The 3D graph's hover label sits inside the library's own tooltip box. */
+.graph3d-label {
+  display: grid;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.graph3d-label span {
+  color: #cbd5e1;
 }

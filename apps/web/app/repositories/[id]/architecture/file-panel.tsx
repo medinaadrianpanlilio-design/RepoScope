@@ -25,6 +25,8 @@ type Props = {
   onToggleImpact: () => void;
   onOpenFile: (file: GraphFile) => void;
   onClose: () => void;
+  /** On narrow screens Local AI lives here; on wide ones it has its own column. */
+  showLocalAi: boolean;
 };
 
 export function FilePanel({
@@ -42,6 +44,7 @@ export function FilePanel({
   onToggleImpact,
   onOpenFile,
   onClose,
+  showLocalAi,
 }: Props) {
 
   return (
@@ -110,15 +113,16 @@ export function FilePanel({
           )}
         </div>
 
-        {repositoryUrl && (
+        {showLocalAi && (
           <LocalAiSection key={file.id} analysisId={analysisId} data={data} file={file} />
         )}
-        <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
 
-        <section>
+        <section className="border-b border-line">
           <h3 className="border-b border-line px-3 py-2 text-xs font-medium">Source</h3>
           <Source key={file.id} analysisId={analysisId} fileId={file.id} />
         </section>
+
+        <DependencyInspector data={data} file={file} onOpenFile={onOpenFile} />
       </div>
     </aside>
   );

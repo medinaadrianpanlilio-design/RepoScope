@@ -42,6 +42,93 @@ export function LocalAiSection(props: Props) {
   );
 }
 
+/**
+ * On wide screens Local AI gets its own column left of the graph, so the file panel on the right
+ * can give its room to the source. It folds away to a narrow strip.
+ */
+export function LocalAiColumn({
+  open,
+  onOpenChange,
+  analysisId,
+  data,
+  file,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  analysisId: string;
+  data: GraphPayload;
+  file: GraphFile | null;
+}) {
+  const ai = useLocalAi();
+
+  if (!open) {
+    return (
+      <div className="flex w-12 shrink-0 flex-col items-center border-r border-line bg-sidebar py-2">
+        <button
+          type="button"
+          onClick={() => onOpenChange(true)}
+          aria-label="Show Local AI"
+          title="Show Local AI"
+          className="flex size-11 cursor-pointer items-center justify-center rounded-lg text-accent-2 transition-colors duration-150 hover:bg-elevated"
+        >
+          <Sparkles size={18} aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <aside
+      aria-label="Local AI"
+      className="flex w-80 shrink-0 flex-col border-r border-line bg-sidebar xl:w-[22rem]"
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-line py-1 pr-1 pl-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Sparkles size={16} className="text-accent-2" aria-hidden />
+          Local AI
+        </h2>
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          aria-label="Hide Local AI"
+          className="inline-flex min-h-11 cursor-pointer items-center px-3 text-xs text-muted transition-colors duration-150 hover:text-foreground"
+        >
+          Hide
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto text-sm">
+        {ai.phase !== "connected" ? (
+          <div className="p-4 text-xs">
+            <LocalAiConnect />
+          </div>
+        ) : file ? (
+          <div className="p-4 text-xs">
+            <p className="truncate font-mono text-muted" title={file.path}>
+              {file.path}
+            </p>
+            <Connected key={file.id} analysisId={analysisId} data={data} file={file} endpoint={ai.endpoint} model={ai.model} />
+          </div>
+        ) : (
+          <div className="space-y-2 p-4 text-xs">
+            <p className="font-mono text-muted">{ai.model}</p>
+            <p className="text-muted">
+              Pick a file in the graph to summarize it or ask about it. Its code goes from this browser
+              straight to your model.
+            </p>
+            <button
+              type="button"
+              onClick={disconnectLocalAi}
+              className="text-accent underline underline-offset-2 hover:decoration-2"
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 /** Everything before a connection exists: the offer, the wait, and setup help. */
 export function LocalAiConnect() {
   const ai = useLocalAi();

@@ -107,6 +107,35 @@ test.describe("graph", () => {
     await page.getByRole("combobox", { name: "Layout", exact: true }).selectOption({ label: "Layered" });
   });
 
+  test("the 3D view draws the files, and search still opens one", async ({ page }) => {
+    await openGraph(page);
+    const layout = page.getByRole("combobox", { name: "Layout", exact: true });
+    await layout.selectOption({ label: "3D" });
+
+    // Either the scene, or a plain message where the browser can't draw 3D.
+    await expect(
+      page.locator(".graph3d canvas").or(page.getByText("This browser can't draw 3D graphics")),
+    ).toBeVisible({ timeout: 45_000 });
+
+    await page.getByLabel("Search files").fill(filePath);
+    await page.getByLabel("Search files").press("Enter");
+    await expect(page.getByRole("complementary", { name: /Details for/ }).getByRole("heading", { name: fileName })).toBeVisible();
+
+    await layout.selectOption({ label: "Layered" });
+    await expect(page.locator(".react-flow__node").first()).toBeVisible({ timeout: 45_000 });
+  });
+
+  test("on a wide screen Local AI has its own column, and folds away", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openGraph(page);
+    const column = page.getByRole("complementary", { name: "Local AI" });
+    await expect(column).toBeVisible();
+    await column.getByRole("button", { name: "Hide Local AI" }).click();
+    await expect(column).toHaveCount(0);
+    await page.getByRole("button", { name: "Show Local AI" }).click();
+    await expect(page.getByRole("complementary", { name: "Local AI" })).toBeVisible();
+  });
+
   test("the legend starts folded on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 720 });
     await openGraph(page);

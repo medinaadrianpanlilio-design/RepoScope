@@ -36,7 +36,7 @@ async function Explorer({ params, searchParams }: Pick<Props, "params" | "search
   return (
     <>
       <div className="px-4 pt-4">
-        <h1 className="truncate font-mono text-sm font-semibold">{repository.full_name}</h1>
+        <h1 className="truncate font-mono text-xl font-bold tracking-tight sm:text-2xl">{repository.full_name}</h1>
         <div className="mt-2">
           <RepoTabs repositoryId={id} active="explorer" />
         </div>
