@@ -1063,6 +1063,11 @@
   --folder-tab: #384560;
 }
 
+/* The lightest card needs a lighter grey to keep 4.5:1. */
+.folder-tone-3 .folder-figures {
+  color: #c6ccd6;
+}
+
 @media (min-width: 1024px) {
   .folders-heading {
     margin-bottom: 40px;

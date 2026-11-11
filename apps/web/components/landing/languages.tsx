@@ -61,17 +61,19 @@ export function Languages() {
         ))}
       </div>
 
-      <ul id="language-panel" role="tabpanel" aria-labelledby={`language-tab-${active}`} className="language-forms">
-        {language.forms.map((form) => (
-          <li key={form.code} className="language-form">
-            <code className="language-code">{form.code}</code>
-            <span className="language-kind">
-              <span className="language-kind-name">{form.kind}</span>
-              <span className="language-kind-note">{form.note}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div id="language-panel" role="tabpanel" aria-labelledby={`language-tab-${active}`}>
+        <ul className="language-forms">
+          {language.forms.map((form) => (
+            <li key={form.code} className="language-form">
+              <code className="language-code">{form.code}</code>
+              <span className="language-kind">
+                <span className="language-kind-name">{form.kind}</span>
+                <span className="language-kind-note">{form.note}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
