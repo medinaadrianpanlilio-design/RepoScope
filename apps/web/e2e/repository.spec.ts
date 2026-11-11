@@ -84,6 +84,29 @@ test.describe("graph", () => {
     await expect(handle).toHaveAttribute("aria-valuenow", String(before + 24));
   });
 
+  test("switching layouts keeps the selected file", async ({ page }) => {
+    await openGraph(page);
+    await page.getByLabel("Search files").fill(filePath);
+    await page.getByLabel("Search files").press("Enter");
+    const panel = page.getByRole("complementary", { name: /Details for/ });
+    await expect(panel.getByRole("heading", { name: fileName })).toBeVisible();
+
+    for (const layout of ["Force-directed", "By folder", "Layered"]) {
+      await page.getByRole("combobox", { name: "Layout", exact: true }).selectOption({ label: layout });
+      await expect(page.locator(".react-flow__node.is-selected")).toHaveCount(1, { timeout: 45_000 });
+      await expect(panel.getByRole("heading", { name: fileName })).toBeVisible();
+    }
+  });
+
+  test("the folder layout draws a frame for each folder, and is remembered", async ({ page }) => {
+    await openGraph(page);
+    await page.getByRole("combobox", { name: "Layout", exact: true }).selectOption({ label: "By folder" });
+    await expect(page.locator(".react-flow__node-box").first()).toBeAttached({ timeout: 45_000 });
+    await page.reload();
+    await expect(page.getByRole("combobox", { name: "Layout", exact: true })).toHaveValue("directory");
+    await page.getByRole("combobox", { name: "Layout", exact: true }).selectOption({ label: "Layered" });
+  });
+
   test("the legend starts folded on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 720 });
     await openGraph(page);

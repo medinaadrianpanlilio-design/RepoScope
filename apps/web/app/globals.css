@@ -105,6 +105,25 @@ body {
   opacity: 0.3;
 }
 
+.graph-box {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--color-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-elevated) 35%, transparent);
+  pointer-events: none;
+}
+
+.graph-box-label {
+  display: block;
+  padding: 6px 10px 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .graph-handle {
   visibility: hidden;
 }
