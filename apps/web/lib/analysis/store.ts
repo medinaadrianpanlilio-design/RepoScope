@@ -1,5 +1,6 @@
 import "server-only";
 import type { AnalysisResult } from "@reposcope/engine";
+import { chunk, mapLimit } from "@/lib/concurrency";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { RunRecord } from "./claim";
@@ -7,6 +8,8 @@ import type { AnalysisStats, RunStatus } from "./pipeline";
 import { decodeSnapshot, encodeSnapshot, type Snapshot } from "./snapshot";
 
 const CHUNK_SIZE = 500;
+// Saving was mostly waiting on one insert at a time. A few at once keep the database comfortable.
+const PARALLEL_INSERTS = 4;
 const RUN_COLUMNS =
   "id, status, error_message, created_at, started_at, analysis_version:stats->>version";
 
@@ -66,11 +69,11 @@ export function runWriter(runId: string) {
     if (error) throw new Error(`Could not update run: ${error.code}`);
   }
 
-  async function insertAll(table: string, rows: Record<string, unknown>[]) {
-    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-      const { error } = await db.from(table).insert(rows.slice(i, i + CHUNK_SIZE));
+  function insertChunk(table: string) {
+    return async (rows: Record<string, unknown>[]) => {
+      const { error } = await db.from(table).insert(rows);
       if (error) throw new Error(`Could not save ${table}: ${error.code}`);
-    }
+    };
   }
 
   async function clearResults() {
@@ -89,12 +92,13 @@ export function runWriter(runId: string) {
     async save(result: AnalysisResult) {
       await clearResults(); // A retried run may have left partial rows behind.
 
+      // Each chunk returns its own rows' ids, matched by path, so chunks can finish in any order.
       const fileIds = new Map<string, number>();
-      for (let i = 0; i < result.files.length; i += CHUNK_SIZE) {
+      await mapLimit(chunk(result.files, CHUNK_SIZE), PARALLEL_INSERTS, async (files) => {
         const { data, error } = await db
           .from("repository_files")
           .insert(
-            result.files.slice(i, i + CHUNK_SIZE).map((file) => ({
+            files.map((file) => ({
               analysis_id: runId,
               file_path: file.path,
               language: file.language,
@@ -109,29 +113,29 @@ export function runWriter(runId: string) {
           .select("id, file_path");
         if (error) throw new Error(`Could not save files: ${error.code}`);
         for (const row of data) fileIds.set(row.file_path, row.id);
-      }
+      });
 
-      await insertAll(
-        "dependency_edges",
-        result.edges.map((edge) => ({
-          analysis_id: runId,
-          source_file_id: fileIds.get(edge.source),
-          target_file_id: fileIds.get(edge.target),
-          relationship_type: edge.type,
-          import_specifier: edge.specifier,
-          line_number: edge.line,
-        })),
-      );
+      const edges = result.edges.map((edge) => ({
+        analysis_id: runId,
+        source_file_id: fileIds.get(edge.source),
+        target_file_id: fileIds.get(edge.target),
+        relationship_type: edge.type,
+        import_specifier: edge.specifier,
+        line_number: edge.line,
+      }));
+      const unresolved = result.unresolved.map((item) => ({
+        analysis_id: runId,
+        source_file_id: fileIds.get(item.source),
+        import_specifier: item.specifier,
+        line_number: item.line,
+      }));
 
-      await insertAll(
-        "unresolved_imports",
-        result.unresolved.map((item) => ({
-          analysis_id: runId,
-          source_file_id: fileIds.get(item.source),
-          import_specifier: item.specifier,
-          line_number: item.line,
-        })),
-      );
+      // Both tables only point at files, so their chunks share one queue.
+      const writes = [
+        ...chunk(edges, CHUNK_SIZE).map((rows) => () => insertChunk("dependency_edges")(rows)),
+        ...chunk(unresolved, CHUNK_SIZE).map((rows) => () => insertChunk("unresolved_imports")(rows)),
+      ];
+      await mapLimit(writes, PARALLEL_INSERTS, (write) => write());
     },
 
     async complete(stats: AnalysisStats) {

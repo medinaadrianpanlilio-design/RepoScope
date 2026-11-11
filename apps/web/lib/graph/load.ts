@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mapLimit, pageStarts } from "@/lib/concurrency";
 import { createClient } from "@/lib/supabase/server";
 import type {
   GraphData,
@@ -10,6 +11,7 @@ import type {
 } from "./types";
 
 const PAGE_SIZE = 1000;
+const PARALLEL_PAGES = 4;
 
 type FileRow = {
   id: number;
@@ -34,20 +36,31 @@ export async function loadGraph(
 ): Promise<GraphData & { unresolved: UnresolvedImport[] }> {
   const supabase = client ?? (await createClient());
 
+  /**
+   * The first page also counts the rows, so the rest can be read at once instead of one after
+   * another. A finished analysis never changes, so the pages always line up.
+   */
   async function readAll<T>(table: string, columns: string): Promise<T[]> {
-    const rows: T[] = [];
-    for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await supabase
+    const page = (from: number, count = false) =>
+      supabase
         .from(table)
-        .select(columns)
+        .select(columns, count ? { count: "exact" } : undefined)
         .eq("analysis_id", analysisId)
         .order("id")
         .range(from, from + PAGE_SIZE - 1)
         .overrideTypes<T[], { merge: false }>();
+
+    const first = await page(0, true);
+    if (first.error) throw new Error(`Could not load ${table}: ${first.error.code}`);
+    const total = first.count ?? first.data.length;
+
+    const starts = pageStarts(total, PAGE_SIZE).slice(1);
+    const rest = await mapLimit(starts, PARALLEL_PAGES, async (from) => {
+      const { data, error } = await page(from);
       if (error) throw new Error(`Could not load ${table}: ${error.code}`);
-      rows.push(...data);
-      if (data.length < PAGE_SIZE) return rows;
-    }
+      return data;
+    });
+    return [first.data, ...rest].flat();
   }
 
   const [fileRows, edgeRows, unresolvedRows] = await Promise.all([
