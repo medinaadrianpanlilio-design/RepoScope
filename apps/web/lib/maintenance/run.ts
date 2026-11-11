@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureExamples } from "@/lib/examples/ensure";
 import { planCleanup, type CleanupRun } from "./plan";
 
 const PAGE_SIZE = 1000;
@@ -27,8 +28,13 @@ async function inBatches(ids: string[], action: (batch: string[]) => PromiseLike
 
 function readInput(db: Db) {
   return Promise.all([
-    readAll<{ id: string; updated_at: string }>((from, to) =>
-      db.from("repositories").select("id, updated_at").order("id").range(from, to),
+    readAll<{ id: string; updated_at: string; full_name: string; owner_user_id: string | null }>(
+      (from, to) =>
+        db
+          .from("repositories")
+          .select("id, updated_at, full_name, owner_user_id")
+          .order("id")
+          .range(from, to),
     ),
     readAll<{ repository_id: string }>((from, to) =>
       db.from("saved_repositories").select("repository_id").order("repository_id").range(from, to),
@@ -80,5 +86,7 @@ export async function runDailyMaintenance(now = new Date()) {
     analysesTrimmed: plan.trimRunIds.length,
     stuckRunsClosed: plan.failRunIds.length,
     rateLimitRowsCleared: count ?? 0,
+    // After the cleanup, so an example's stuck run is already closed and can be started again.
+    examples: await ensureExamples(),
   };
 }

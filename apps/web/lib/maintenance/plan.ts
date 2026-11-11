@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { isStale, type RunRecord } from "@/lib/analysis/claim";
+import { isExampleRow } from "@/lib/examples/list";
 
 export type CleanupRun = RunRecord & {
   repository_id: string;
@@ -7,7 +8,7 @@ export type CleanupRun = RunRecord & {
 };
 
 type CleanupInput = {
-  repositories: { id: string; updated_at: string }[];
+  repositories: { id: string; updated_at: string; full_name: string; owner_user_id: string | null }[];
   savedRepositoryIds: Set<string>;
   runs: CleanupRun[];
 };
@@ -15,7 +16,10 @@ type CleanupInput = {
 const FULL_ANALYSES_KEPT = 5;
 const UNSAVED_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Decides what to clean up without touching anything, so the rules can be tested. */
+/**
+ * Decides what to clean up without touching anything, so the rules can be tested. Example
+ * repositories are kept like saved ones, so anyone can always open them.
+ */
 export function planCleanup({ repositories, savedRepositoryIds, runs }: CleanupInput, now: Date) {
   const cutoff = now.getTime() - UNSAVED_RETENTION_MS;
   const lastAnalysis = new Map<string, number>();
@@ -25,9 +29,10 @@ export function planCleanup({ repositories, savedRepositoryIds, runs }: CleanupI
   }
 
   const deleteRepositoryIds = repositories
-    .filter(({ id, updated_at }) => {
+    .filter((repository) => {
+      const { id, updated_at } = repository;
       const lastUsed = Math.max(new Date(updated_at).getTime(), lastAnalysis.get(id) ?? 0);
-      return !savedRepositoryIds.has(id) && lastUsed < cutoff;
+      return !savedRepositoryIds.has(id) && !isExampleRow(repository) && lastUsed < cutoff;
     })
     .map(({ id }) => id);
 

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { ExampleRepositories } from "@/components/example-repositories";
 import { ImportForm } from "@/components/import-form";
 
 const steps = [
@@ -33,6 +35,9 @@ export default function Home() {
           RepoScope is in early development. JavaScript and TypeScript analysis works today; the
           interactive graph is being built next.
         </p>
+        <Suspense fallback={null}>
+          <ExampleRepositories />
+        </Suspense>
       </section>
 
       <section className="border-t border-line">
