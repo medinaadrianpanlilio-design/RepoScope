@@ -6,5 +6,5 @@ export default defineConfig({
       "@reposcope/engine": fileURLToPath(new URL("../../packages/engine/src/index.ts", import.meta.url)),
       "@": fileURLToPath(new URL(".", import.meta.url)),
     } },
-  test: { include: ["lib/**/*.test.ts"] },
+  test: { include: ["lib/**/*.test.ts", "app/**/*.test.ts"] },
 });
