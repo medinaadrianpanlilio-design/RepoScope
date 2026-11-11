@@ -155,7 +155,7 @@ function InsightCard({ repositoryId, insight }: { repositoryId: string; insight:
                   <Link
                     href={`/repositories/${repositoryId}/explorer?file=${file.id}`}
                     title={file.path}
-                    className="min-w-0 flex-1 truncate font-mono hover:text-accent"
+                    className="block min-h-6 min-w-0 flex-1 truncate font-mono leading-6 hover:text-accent"
                   >
                     {file.path}
                   </Link>
@@ -163,7 +163,7 @@ function InsightCard({ repositoryId, insight }: { repositoryId: string; insight:
                     href={`/repositories/${repositoryId}/architecture?file=${file.id}`}
                     aria-label={`View ${file.path} in the graph`}
                     title="View in graph"
-                    className="shrink-0 text-muted hover:text-accent"
+                    className="inline-flex size-6 shrink-0 items-center justify-center text-muted hover:text-accent"
                   >
                     <Share2 size={12} aria-hidden />
                   </Link>

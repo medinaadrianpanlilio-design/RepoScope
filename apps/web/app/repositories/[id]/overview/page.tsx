@@ -16,7 +16,7 @@ type Props = PageProps<"/repositories/[id]/overview">;
 
 export default function OverviewPage({ params, searchParams }: Props) {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
       <Suspense fallback={<p className="text-sm text-muted">Loading repository…</p>}>
         <Overview params={params} searchParams={searchParams} />
       </Suspense>
@@ -60,7 +60,7 @@ async function Overview({ params, searchParams }: Pick<Props, "params" | "search
                 href={repository.github_url}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex items-center gap-1 text-accent hover:underline"
+                className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:decoration-2"
               >
                 View on GitHub <ExternalLink size={14} aria-hidden />
               </a>

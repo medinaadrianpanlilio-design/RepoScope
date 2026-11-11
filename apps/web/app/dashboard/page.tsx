@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
       <Suspense fallback={<p className="text-sm text-muted">Loading your repositories…</p>}>
         <Dashboard searchParams={searchParams} />
       </Suspense>

@@ -14,7 +14,7 @@ type Props = PageProps<"/repositories/[id]/explorer">;
 
 export default function ExplorerPage({ params, searchParams }: Props) {
   return (
-    <main className="flex min-h-0 flex-1 flex-col">
+    <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col">
       <Suspense fallback={<p className="p-4 text-sm text-muted">Loading repository…</p>}>
         <Explorer params={params} searchParams={searchParams} />
       </Suspense>
@@ -58,7 +58,7 @@ async function Explorer({ params, searchParams }: Pick<Props, "params" | "search
           </p>
           <Link
             href={`/repositories/${id}/overview`}
-            className="mt-3 inline-block text-sm text-accent hover:underline"
+            className="mt-3 inline-block text-sm text-accent underline underline-offset-2 hover:decoration-2"
           >
             Go to the overview
           </Link>

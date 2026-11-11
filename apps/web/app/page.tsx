@@ -17,7 +17,7 @@ const steps = [
 
 export default function Home() {
   return (
-    <main className="flex-1">
+    <main id="main" tabIndex={-1} className="flex-1">
       <section className="mx-auto max-w-3xl px-4 pt-24 pb-16">
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Understand Any Codebase. Visually.

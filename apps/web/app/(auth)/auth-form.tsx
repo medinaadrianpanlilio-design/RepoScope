@@ -15,7 +15,7 @@ export function AuthForm({ mode, action, initialError }: Props) {
   const isLogin = mode === "login";
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
+    <main id="main" tabIndex={-1} className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
         <h1 className="text-xl font-semibold">
           {isLogin ? "Sign in to RepoScope" : "Create your account"}
@@ -68,7 +68,7 @@ export function AuthForm({ mode, action, initialError }: Props) {
 
         <p className="mt-6 text-sm text-muted">
           {isLogin ? "New here? " : "Already have an account? "}
-          <Link href={isLogin ? "/signup" : "/login"} className="text-accent hover:underline">
+          <Link href={isLogin ? "/signup" : "/login"} className="text-accent underline underline-offset-2 hover:decoration-2">
             {isLogin ? "Create an account" : "Sign in"}
           </Link>
         </p>

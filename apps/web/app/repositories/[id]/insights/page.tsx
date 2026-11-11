@@ -17,7 +17,7 @@ type Props = PageProps<"/repositories/[id]/insights">;
 
 export default function InsightsPage({ params }: Props) {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
       <Suspense fallback={<p className="text-sm text-muted">Reading the analysis…</p>}>
         <Insights params={params} />
       </Suspense>
@@ -51,7 +51,7 @@ async function Insights({ params }: Pick<Props, "params">) {
           </p>
           <Link
             href={`/repositories/${id}/overview`}
-            className="mt-3 inline-block text-sm text-accent hover:underline"
+            className="mt-3 inline-block text-sm text-accent underline underline-offset-2 hover:decoration-2"
           >
             Go to the overview
           </Link>

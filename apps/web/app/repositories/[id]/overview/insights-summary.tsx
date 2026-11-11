@@ -34,7 +34,7 @@ export async function InsightsSummary({ repositoryId, analysisId, stats }: Props
           </ul>
           <Link
             href={`/repositories/${repositoryId}/insights`}
-            className="mt-2 inline-block text-sm text-accent hover:underline"
+            className="mt-2 inline-block text-sm text-accent underline underline-offset-2 hover:decoration-2"
           >
             See all {insights.length} insights
           </Link>

@@ -101,7 +101,7 @@ function Setup({ reason, endpoint }: { reason: "unreachable" | "loading"; endpoi
             href="https://github.com/ggml-org/llama.cpp/releases"
             target="_blank"
             rel="noreferrer noopener"
-            className="text-accent hover:underline"
+            className="text-accent underline underline-offset-2 hover:decoration-2"
           >
             llama.cpp
           </a>{" "}
@@ -110,7 +110,7 @@ function Setup({ reason, endpoint }: { reason: "unreachable" | "loading"; endpoi
             href="https://huggingface.co/unsloth/Qwen3.5-4B-GGUF"
             target="_blank"
             rel="noreferrer noopener"
-            className="text-accent hover:underline"
+            className="text-accent underline underline-offset-2 hover:decoration-2"
           >
             Qwen3.5-4B
           </a>
@@ -127,14 +127,14 @@ function Setup({ reason, endpoint }: { reason: "unreachable" | "loading"; endpoi
           Try again
         </button>
         {endpoint === OLLAMA_ENDPOINT ? (
-          <button type="button" onClick={disconnectLocalAi} className="text-accent hover:underline">
+          <button type="button" onClick={disconnectLocalAi} className="text-accent underline underline-offset-2 hover:decoration-2">
             Use llama.cpp instead
           </button>
         ) : (
           <button
             type="button"
             onClick={() => connectLocalAi(OLLAMA_ENDPOINT)}
-            className="text-accent hover:underline"
+            className="text-accent underline underline-offset-2 hover:decoration-2"
           >
             Use Ollama instead
           </button>
@@ -172,7 +172,7 @@ function Connected({ analysisId, data, file, endpoint, model }: Props & { endpoi
         <span className="min-w-0 truncate font-mono" title={model}>
           {model}
         </span>
-        <button type="button" onClick={disconnectLocalAi} className="text-accent hover:underline">
+        <button type="button" onClick={disconnectLocalAi} className="text-accent underline underline-offset-2 hover:decoration-2">
           Disconnect
         </button>
       </p>
@@ -329,11 +329,11 @@ function Summary({
                     type="button"
                     onClick={saveCorrection}
                     disabled={!draft.trim()}
-                    className="text-accent hover:underline"
+                    className="text-accent underline underline-offset-2 hover:decoration-2"
                   >
                     Save correction
                   </button>
-                  <button type="button" onClick={() => setEditing(false)} className="text-muted hover:underline">
+                  <button type="button" onClick={() => setEditing(false)} className="text-muted underline underline-offset-2 hover:decoration-2">
                     Cancel
                   </button>
                 </>
@@ -344,7 +344,7 @@ function Summary({
                     setDraft(shown);
                     setEditing(true);
                   }}
-                  className="text-accent hover:underline"
+                  className="text-accent underline underline-offset-2 hover:decoration-2"
                 >
                   Correct this
                 </button>

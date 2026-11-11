@@ -88,13 +88,13 @@ export function FilePanel({
             type="button"
             onClick={onToggleImpact}
             aria-pressed={inImpact}
-            className="inline-flex items-center gap-1 text-impact hover:underline"
+            className="inline-flex items-center gap-1 text-impact underline underline-offset-2 hover:decoration-2"
           >
             <Radar size={12} aria-hidden /> {inImpact ? "Remove from impact" : "Show change impact"}
           </button>
           <Link
             href={`/repositories/${repositoryId}/explorer?file=${file.id}`}
-            className="inline-flex items-center gap-1 text-accent hover:underline"
+            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:decoration-2"
           >
             <FolderTree size={12} aria-hidden /> Open in Explorer
           </Link>
@@ -103,7 +103,7 @@ export function FilePanel({
               href={githubFileUrl(repositoryUrl, commitSha, file.path)}
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:decoration-2"
             >
               View on GitHub <ExternalLink size={12} aria-hidden />
             </a>
