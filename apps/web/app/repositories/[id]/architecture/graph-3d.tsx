@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Pause, Play, Plus, Scan } from "lucide-react";
+import { Minus, Plus, Scan } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ForceGraph3DInstance } from "3d-force-graph";
 import type { Object3D } from "three";
@@ -49,7 +49,15 @@ const SELECTED = "#ffffff";
 const IMPORTER = "#22c55e";
 const IMPORTED = "#60a5fa";
 const IMPACTED = "#e0a458";
-const FADED = "#1e293b";
+/** Ticks the layout runs before anything is drawn. Afterwards nothing moves on its own. */
+const LAYOUT_TICKS = 300;
+
+/** A colour pulled towards black, so a file outside the selection keeps its hue but steps back. */
+function dimmed(hex: string, keep = 0.7): string {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const channel = (shift: number) => Math.round(((value >> shift) & 255) * keep);
+  return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
+}
 // The post-processing brightens dark colours, so only true black stays black.
 const BACKGROUND = "#000000";
 
@@ -118,7 +126,6 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
   const [ready, setReady] = useState(false);
   // Only drawn in the browser, after the graph data has arrived.
   const [failed, setFailed] = useState(() => typeof document !== "undefined" && !webglAvailable());
-  const [rotating, setRotating] = useState(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -158,26 +165,33 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
         .nodeRelSize(3)
         .nodeResolution(14)
         .nodeOpacity(0.95)
-        .linkOpacity(0.45)
-        .linkDirectionalParticleWidth(1.6)
-        .linkDirectionalParticleSpeed(0.006)
-        .cooldownTime(6000)
+        .linkOpacity(0.5)
+        // The layout is worked out before the first frame, then frozen: nothing drifts or reacts.
+        .warmupTicks(LAYOUT_TICKS)
+        .cooldownTicks(1)
+        .enableNodeDrag(false)
         .onNodeClick((node) => onSelectRef.current(node.id))
         .onBackgroundClick(() => onSelectRef.current(null));
 
       const bloom = new UnrealBloomPass(new Vector2(element.clientWidth, element.clientHeight), 0.9, 0.1, 0.15);
       instance.postProcessingComposer().addPass(bloom);
 
+      // Calm, predictable controls: zoom heads for the pointer, panning follows the screen, and
+      // Shift-drag or the arrow keys pan as well as right-drag.
       const controls = instance.controls() as OrbitControls;
-      controls.autoRotateSpeed = 0.5;
       controls.enableDamping = true;
+      controls.dampingFactor = 0.15;
+      controls.rotateSpeed = 0.55;
+      controls.zoomSpeed = 1.1;
+      controls.panSpeed = 0.9;
+      controls.screenSpacePanning = true;
+      controls.zoomToCursor = true;
+      controls.minDistance = 15;
+      controls.maxDistance = 6000;
+      controls.keyPanSpeed = 20;
+      controls.listenToKeyEvents(element);
 
-      let fitted = false;
-      instance.onEngineStop(() => {
-        if (fitted) return;
-        fitted = true;
-        instance.zoomToFit(prefersReducedMotion() ? 0 : 700, 40);
-      });
+      instance.onEngineStop(() => instance.zoomToFit(0, 40));
 
       observer = new ResizeObserver(() => {
         instance.width(element.clientWidth).height(element.clientHeight);
@@ -186,7 +200,6 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
 
       graph.current = instance;
       setReady(true);
-      setRotating(!prefersReducedMotion());
     })().catch(() => {
       if (!disposed) setFailed(true);
     });
@@ -273,20 +286,22 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
   useEffect(() => {
     const instance = graph.current;
     if (!ready || !instance) return;
-    const motion = !prefersReducedMotion();
+
+    const ownColor = (node: Node3D) =>
+      node.orphan ? ORPHAN_COLOR : (clusters.colors.get(node.cluster) ?? ORPHAN_COLOR);
 
     const nodeColor = (node: Node3D) => {
       if (impact) {
         if (impact.sources.has(node.id)) return SELECTED;
-        return impact.affected.has(node.id) ? IMPACTED : FADED;
+        return impact.affected.has(node.id) ? IMPACTED : dimmed(ownColor(node));
       }
       if (related) {
         if (node.id === selectedId) return SELECTED;
         if (related.importers.has(node.id)) return IMPORTER;
         if (related.imported.has(node.id)) return IMPORTED;
-        return FADED;
+        return dimmed(ownColor(node));
       }
-      return node.orphan ? ORPHAN_COLOR : (clusters.colors.get(node.cluster) ?? ORPHAN_COLOR);
+      return ownColor(node);
     };
 
     const linkRole = (link: Link3D): "in" | "out" | "impact" | "faded" | "base" => {
@@ -309,12 +324,11 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
         if (role === "in") return IMPORTER;
         if (role === "out") return IMPORTED;
         if (role === "impact") return IMPACTED;
-        if (role === "faded") return "#162033";
         const source = typeof link.source === "number" ? undefined : link.source;
-        return source ? (clusters.colors.get(source.cluster) ?? ORPHAN_COLOR) : ORPHAN_COLOR;
+        const color = source ? ownColor(source) : ORPHAN_COLOR;
+        return role === "faded" ? dimmed(color, 0.5) : color;
       })
-      .linkWidth((link) => (["in", "out", "impact"].includes(linkRole(link)) ? 0.9 : 0))
-      .linkDirectionalParticles((link) => (motion && ["in", "out"].includes(linkRole(link)) ? 2 : 0));
+      .linkWidth((link) => (["in", "out", "impact"].includes(linkRole(link)) ? 0.9 : 0));
   }, [ready, related, impact, selectedId, clusters]);
 
   // Fly to the picked file when asked, for example after a search.
@@ -334,12 +348,6 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
     // Only a new request should move the camera, not every selection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, flyRequest]);
-
-  useEffect(() => {
-    const instance = graph.current;
-    if (!ready || !instance) return;
-    (instance.controls() as OrbitControls).autoRotate = rotating;
-  }, [ready, rotating]);
 
   function zoom(factor: number) {
     const instance = graph.current;
@@ -376,8 +384,10 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
       <div
         ref={host}
         className="graph3d absolute inset-0"
-        role="img"
-        aria-label={`3D graph of ${files.length.toLocaleString("en-US")} files. Drag to turn it, scroll or pinch to zoom, right-drag to pan. Search picks a file by keyboard.`}
+        role="region"
+        tabIndex={0}
+        aria-roledescription="3D graph"
+        aria-label={`3D graph of ${files.length.toLocaleString("en-US")} files. Drag to turn it, scroll or pinch to zoom, right-drag, Shift-drag or the arrow keys to pan. Search picks a file by keyboard.`}
       />
       {!ready && (
         <p role="status" className="pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 text-sm text-muted">
@@ -402,13 +412,6 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
             >
               <Scan size={18} aria-hidden />
             </ControlButton>
-            <ControlButton
-              label={rotating ? "Stop turning" : "Turn slowly"}
-              pressed={rotating}
-              onClick={() => setRotating((value) => !value)}
-            >
-              {rotating ? <Pause size={18} aria-hidden /> : <Play size={18} aria-hidden />}
-            </ControlButton>
           </div>
         </div>
       )}
@@ -418,12 +421,10 @@ export function Graph3D({ files, edges, selectedId, impact, flyRequest, onSelect
 
 function ControlButton({
   label,
-  pressed,
   onClick,
   children,
 }: {
   label: string;
-  pressed?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -432,7 +433,6 @@ function ControlButton({
       type="button"
       aria-label={label}
       title={label}
-      aria-pressed={pressed}
       onClick={onClick}
       className="flex size-11 cursor-pointer items-center justify-center rounded-lg border border-line bg-card/90 text-foreground transition-colors duration-150 hover:border-muted hover:bg-elevated"
     >
@@ -445,23 +445,25 @@ const SHOWN_CLUSTERS = 8;
 
 function ClusterKey({ order, colors }: { order: string[]; colors: Map<string, string> }) {
   return (
-    <ul
-      aria-label="Folder colours"
-      className="hidden max-w-56 space-y-1 rounded-lg border border-line bg-card/85 p-3 font-mono text-xs md:block"
-    >
-      {order.slice(0, SHOWN_CLUSTERS).map((key) => (
-        <li key={key} className="flex items-center gap-2 truncate">
-          <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ background: colors.get(key), boxShadow: `0 0 8px ${colors.get(key)}` }}
-            aria-hidden
-          />
-          <span className="truncate">{key}</span>
-        </li>
-      ))}
-      {order.length > SHOWN_CLUSTERS && (
-        <li className="text-muted">and {order.length - SHOWN_CLUSTERS} more folders</li>
-      )}
-    </ul>
+    <div className="hidden w-56 rounded-lg border border-line bg-card/85 p-3 text-xs md:block">
+      <ul aria-label="Folder colours" className="space-y-1 font-mono">
+        {order.slice(0, SHOWN_CLUSTERS).map((key) => (
+          <li key={key} className="flex items-center gap-2 truncate">
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ background: colors.get(key), boxShadow: `0 0 8px ${colors.get(key)}` }}
+              aria-hidden
+            />
+            <span className="truncate">{key}</span>
+          </li>
+        ))}
+        {order.length > SHOWN_CLUSTERS && (
+          <li className="text-muted">and {order.length - SHOWN_CLUSTERS} more folders</li>
+        )}
+      </ul>
+      <p className="mt-2 border-t border-line pt-2 text-muted">
+        Drag to turn · Scroll to zoom · Right-drag or Shift-drag to pan
+      </p>
+    </div>
   );
 }

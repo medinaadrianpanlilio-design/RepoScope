@@ -174,8 +174,9 @@ Last results: 164 engine tests, 31 CLI tests, 341 web tests and 18 browser tests
   palette, IBM Plex Sans with JetBrains Mono, 44px controls, and a home page in its "Product Demo +
   Features" pattern. A mockup came first and the owner approved it.
 - The graph has a 3D view: every file a glowing point coloured by folder, sized by how much imports it,
-  in space you can turn, pan and zoom (`3d-force-graph`, loaded only when 3D is picked). Picking a file
-  lights importers green and imports blue, and change impact works there too. Browsers without WebGL
+  in space you can turn, pan and zoom (`3d-force-graph`, loaded only when 3D is picked). The layout is
+  worked out once before drawing and then stays still. Picking a file lights importers green and imports
+  blue while the rest keep a dimmer version of their folder colour, and change impact works there too. Browsers without WebGL
   get a message pointing to the 2D layouts.
 - On wide screens Local AI has its own column left of the graph, and the file panel on the right puts
   the source first.
